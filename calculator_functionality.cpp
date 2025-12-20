@@ -13,6 +13,11 @@ HWND windowHandle;
 void calculator_functionality::CreatePopup(HWND hwnd) {
     MessageBox(hwnd, L"Hello from CreatePopup!", L"Info", MB_OK);
 }
+/**
+* @brief Inserts a char into the text box.
+* @param character takes in a character to insert.
+* @param hWnd takes in the HWND handle.
+*/
 void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
      
     /* ----- Problems found -----
@@ -35,6 +40,12 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
      * 
      * Potential Fix:
      * Add error handling code to remove unclosed parenthese before computing.
+     * 
+     * Problem 4: 
+     * X is not treated as *.
+     * 
+     * Fix: 
+     * Treat X as *.
      * --------------------------
     */
 
@@ -43,12 +54,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
     if (!IsWindow(windowHandle)) {
         windowHandle = hWnd;
     }
-    //if (!numberList.empty() && numberList.back() != "+" && numberList.back() != "-" && numberList.back() != "*" && numberList.back() != "/") {
-    //    numberList.back() += std::to_string(num); // Appends the number to the last item
-    //}
-    //else {
-    //    numberList.push_back(std::to_string(num)); // If empty, add as new item
-    //}
+
     HWND hEdit = GetDlgItem(hWnd, 1000); // Get handle to edit control
 
     // Get the current text length
@@ -100,8 +106,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
     SetWindowTextW(hEdit, currentText.c_str());
 }
 /**
-*  @brief Gets the current expression from the next box. 
-* 
+*  @brief Gets the current expression from the text box. 
 */
 std::wstring calculator_functionality::GetCurrentExpression() {
     HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
@@ -129,7 +134,6 @@ std::wstring calculator_functionality::GetCurrentExpression() {
 
 /**
 *  @brief Clears the last item on the expression string.
-* 
 */
 void calculator_functionality::ClearEntry()
 {
@@ -144,34 +148,94 @@ void calculator_functionality::ClearEntry()
     // Setting the window text
     SetWindowText(hEdit, curExpression.c_str());
 }
-
-
-void calculator_functionality::Compute(std::wstring expression) {
-    
+/**
+* @brief Pre processes the expression from a wstring and resets the text box.
+* @param expression takes in a wide string expression to compute.
+*/
+std::string calculator_functionality::PreProcess(std::wstring expression) {
+    /*
+    * 
+    * 
+    * 
+    * 
+    * 
+    * 
+    */
     // Get handle to edit control
-    HWND hEdit = GetDlgItem(windowHandle, 1000); 
+    HWND hEdit = GetDlgItem(windowHandle, 1000);
 
     // creating a converter object to convert UTF-16 wide strings (wstring) to UTF-8 narrow strings (string)
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 
     // converts the wstring into a string (UTF-8 bytes) for use in the expression tree, since it expects narrow strings
     std::string expressionString = converter.to_bytes(expression);
-  
-    // creating the expression tree object
-    ExpressionTree exp(expressionString);
-
-    // convert from a double to a wstring
-    std::wstring wstringEvaluation = std::to_wstring(exp.Evaluate());
-
-    // gets a constant pointer to the wstring null terminated buffer, makes it safe for win32 api calls
-    LPCWSTR lpcwstrEvaluation = wstringEvaluation.c_str();
-
-    // setting the edit text
-    SetWindowTextW(hEdit, lpcwstrEvaluation);
+    std::cout << expressionString << std::endl;
     
-    // console print, also re-evaulates the expresion tree
-    std::cout << exp.Evaluate() << std::endl;
+    std::string tempExpStr = expressionString;
+    for (size_t i = 0; i < tempExpStr.size(); ++i) {
+        if (tempExpStr[i] == ')') {
+            return "Err";
+            break;
+        }
+        else if (tempExpStr[i] == '(') {
+            bool foundClose = false;
 
+            for (size_t j = i + 1; j < tempExpStr.size(); ++j) {
+                if (tempExpStr[j] == ')') {
+                    foundClose = true;
+                    tempExpStr.erase(j, 1);
+                    tempExpStr.erase(i, 1);
+                    i--;
+                    break;
+                }
+                if (j == tempExpStr.length() - 1) {
+                    // here you expect syntax error
+                    return "Err";
+                }
+            }
+
+            // Alternative syntax error check:
+            if (!foundClose) {
+                // syntax error here is guaranteed to run whenever '(' has no ')'
+            }
+        }
+    }
+    return expressionString;
+}
+
+/**
+* @brief Computes the expression from a wstring and resets the text box.
+* @param expression takes in a wide string expression to compute.
+*/
+void calculator_functionality::Compute(std::wstring expression) {
+    
+    // Testing preprocessing, REMOVE THIS
+    std::string processedStr = calculator_functionality::PreProcess(expression);
+
+    // Get handle to edit control
+    HWND hEdit = GetDlgItem(windowHandle, 1000); 
+
+    if (processedStr == "Err") {
+        
+        SetWindowTextW(hEdit, L"SYNTAX ERROR");
+        return;
+    }
+    else {
+        // creating the expression tree object
+        ExpressionTree exp(processedStr);
+
+        // convert from a double to a wstring
+        std::wstring wstringEvaluation = std::to_wstring(exp.Evaluate());
+
+        // gets a constant pointer to the wstring null terminated buffer, makes it safe for win32 api calls
+        LPCWSTR lpcwstrEvaluation = wstringEvaluation.c_str();
+
+        // setting the edit text
+        SetWindowTextW(hEdit, lpcwstrEvaluation);
+
+        // console print, also re-evaulates the expresion tree
+        std::cout << exp.Evaluate() << std::endl;
+    }
 }
 
 

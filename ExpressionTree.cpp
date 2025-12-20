@@ -69,6 +69,21 @@ void PopOperator(std::stack<std::string> &operatorStack, std::stack<ExpressionTr
 void ExpressionTree::FromString(const std::string &expressionString)
 {
 	std::string str(expressionString);
+
+	// First pass: handle unary minus by replacing with "0-"
+	for (size_t i = 0; i < str.length(); ++i) {
+		if (str[i] == '-') {
+			bool isUnary = (i == 0) ||
+				(str[i - 1] == '(') ||
+				(operators.find(std::string(1, str[i - 1])) != operators.end());
+			if (isUnary) {
+				str.insert(i, "0");  // Insert "0" before unary "-", making "0--3" -> "0-3"
+				i++;  // Skip the inserted '0'
+			}
+		}
+	}
+
+
 	// need more explanation on size_t
 	for (size_t i = 0; i < str.length(); ++i) {
 		std::string op;
