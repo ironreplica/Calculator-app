@@ -46,9 +46,41 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
     HWND hEdit = GetDlgItem(hWnd, 1000); // Get handle to edit control
 
     // ---------- handle multi-character buttons first ----------
-    if (wcscmp(character, L"CE") == 0) { // works like C button for now
-        // Clear current entry: set edit to "0"
-        SetWindowTextW(hEdit, L"0");
+    if (wcscmp(character, L"CE") == 0) {
+        // Clear last numeric entry from the expression in the edit control
+        int length = GetWindowTextLengthW(hEdit);
+        if (length > 0) {
+            std::wstring currentText(length, L'\0');
+            GetWindowTextW(hEdit, &currentText[0], length + 1);
+
+            // 1. Remove trailing spaces
+            while (!currentText.empty() && iswspace(currentText.back())) {
+                currentText.pop_back();
+            }
+
+            // 2. Remove trailing digits and decimal point from the last number
+            while (!currentText.empty()) {
+                wchar_t ch = currentText.back();
+                if ((ch >= L'0' && ch <= L'9') || ch == L'.') {
+                    currentText.pop_back();
+                }
+                else {
+                    break; // hit operator or parenthesis
+                }
+            }
+
+            // 3. Remove trailing spaces after removing the number
+            while (!currentText.empty() && iswspace(currentText.back())) {
+                currentText.pop_back();
+            }
+
+            // If everything was removed, show 0
+            if (currentText.empty()) {
+                currentText = L"0";
+            }
+
+            SetWindowTextW(hEdit, currentText.c_str());
+        }
         return;
     }
 
