@@ -9,7 +9,6 @@ class calculator_functionality {
 public: 
 		void CreatePopup(HWND hwnd);
 		void InsertChar(const wchar_t* character, HWND hWnd);
-		void InsertOperator(char op);
 		
 private:
 	std::vector<std::string> numberList;
@@ -18,4 +17,5 @@ private:
 	void Compute(std::wstring expression);
 	std::wstring GetCurrentExpression();
 	void ClearEntry();
+	std::string PreProcess(std::wstring expression);
 };
