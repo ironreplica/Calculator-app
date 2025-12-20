@@ -7,29 +7,6 @@
 #include <locale>
 #include <codecvt>
 
-/* ----- Problems found -----
-     * Problem 1:
-     * Code does not currently support negatives. Once you operate on a negative it breaks,
-     * since the expression tree treats all negatives as the operator...
-     *
-     * Potential Fix:
-     * Will likely have to add a new property with its own precedence for unary negative values.
-     *
-     * Problem 2:
-     * ClearEntry() does not operate like a normal calculator. CE needs to clear the last number typed.
-     * Not the last character typed.
-     *
-     * Potential Fix:
-     * Some type of preprocessing to seperate the numbers. This will add complexity with the ExpressionTree.
-     *
-     * Problem 3:
-     * Unclosed parentheses cause crash.
-     *
-     * Potential Fix:
-     * Add error handling code to remove unclosed parenthese before computing.
-     * --------------------------
-    */
-
 HWND windowHandle;
 
 void calculator_functionality::CreatePopup(HWND hwnd) {
