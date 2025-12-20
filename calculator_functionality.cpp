@@ -19,35 +19,6 @@ void calculator_functionality::CreatePopup(HWND hwnd) {
 * @param hWnd takes in the HWND handle.
 */
 void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
-     
-    /* ----- Problems found -----
-     * Problem 1: 
-     * Code does not currently support negatives. Once you operate on a negative it breaks,
-     * since the expression tree treats all negatives as the operator... 
-     * 
-     * Potential Fix:
-     * Will likely have to add a new property with its own precedence for unary negative values.
-     * 
-     * Problem 2:
-     * ClearEntry() does not operate like a normal calculator. CE needs to clear the last number typed.
-     * Not the last character typed.
-     * 
-     * Potential Fix:
-     * Some type of preprocessing to seperate the numbers. This will add complexity with the ExpressionTree.
-     * 
-     * Problem 3:
-     * Unclosed parentheses cause crash. 
-     * 
-     * Potential Fix:
-     * Add error handling code to remove unclosed parenthese before computing.
-     * 
-     * Problem 4: 
-     * X is not treated as *.
-     * 
-     * Fix: 
-     * Treat X as *.
-     * --------------------------
-    */
 
     wchar_t selectedChar = character[0];
 
@@ -57,10 +28,43 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
 
     HWND hEdit = GetDlgItem(hWnd, 1000); // Get handle to edit control
 
+    // ---------- handle multi-character buttons first ----------
+    if (wcscmp(character, L"CE") == 0) { // works like C button for now
+        // Clear current entry: set edit to "0"
+        SetWindowTextW(hEdit, L"0");
+        return;
+    }
+
+    if (wcscmp(character, L"C") == 0) {
+        // Clear ALL: clear expression state and display
+        expression.clear();          // your expression storage
+        // if you track more state (storedValue, pendingOp, etc.), reset here
+        SetWindowTextW(hEdit, L"0");
+        return;
+    }
+
+    if (wcscmp(character, L"DEL") == 0) { // deletes last character 
+        // Delete last character from the edit control
+        int length = GetWindowTextLengthW(hEdit);
+        if (length > 0) {
+            std::wstring currentText(length, L'\0');
+            GetWindowTextW(hEdit, &currentText[0], length + 1);
+
+            if (!currentText.empty()) {
+                currentText.pop_back();
+                if (currentText.empty()) {
+                    currentText = L"0";
+                }
+                SetWindowTextW(hEdit, currentText.c_str());
+            }
+        }
+        return;
+    }
+
     // Get the current text length
     int length = GetWindowTextLengthW(hEdit);
     switch (selectedChar) {
-    // --- Special buttons ---
+        // --- Special buttons ---
     case L'=':
         // Allocate buffer for current text; +1 for null terminator
         expression = (length, L'\0');
@@ -71,7 +75,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
     case L'CE':
         ClearEntry();
         break;
-    // --- Operators ---
+        // --- Operators ---
     case L'×':
         // set character to *, now the expression tree can recognize it
         selectedChar = L'*';
@@ -95,7 +99,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
 
     // Convert single wide character to temp wide string
     std::wstring ws(1, selectedChar);
-    
+
     // Convert the incoming wchar_t* to std::wstring
     std::wstring wTextToAppend(ws);
 
@@ -105,9 +109,6 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
     // Set the new text back to the edit control
     SetWindowTextW(hEdit, currentText.c_str());
 }
-/**
-*  @brief Gets the current expression from the text box. 
-*/
 std::wstring calculator_functionality::GetCurrentExpression() {
     HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
     if (!hEdit) {

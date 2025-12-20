@@ -14,6 +14,7 @@ ExpressionTree::ExpressionTree(const std::string& str)
 		operators["-"] = ExpressionTree::OperatorInfo(0, ExpressionTree::Subtract);
 		operators["*"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Multiply);
 		operators["/"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Divide);
+		operators["u-"] = ExpressionTree::OperatorInfo(2, ExpressionTree::UnaryMinus);
 		operators["("] = ExpressionTree::OperatorInfo(-1, NULL);
 		operators[")"] = ExpressionTree::OperatorInfo(-1, NULL);
 		operators["#"] = ExpressionTree::OperatorInfo(-1, NULL);
@@ -43,7 +44,10 @@ double ExpressionTree::Evaluate(ExpressionTree::Node* node) const
 
 	return val;
 }
-
+double ExpressionTree::UnaryMinus(double a, double b/*unused*/)
+{
+	return -a;
+}
 std::string ExpressionTree::Expression() const
 {
 	return std::string();
@@ -70,21 +74,37 @@ void ExpressionTree::FromString(const std::string &expressionString)
 {
 	std::string str(expressionString);
 
-	// First pass: handle unary minus by replacing with "0-"
-	for (size_t i = 0; i + 1 < str.size(); ++i) {
-		if ((str[i] == '+' || str[i] == '-') &&
-			(str[i + 1] == '+' || str[i + 1] == '-')) {
+	// 1) Insert 0 before truly unary minus: "-6" -> "0-6", "(-6" -> "(0-6", "*-6" -> "*0-6"
+	for (size_t i = 0; i < str.size(); ++i) {
+		if (str[i] == '-') {
+			bool isUnary =
+				(i == 0) ||                       // at start: "-6"
+				(str[i - 1] == '(') ||            // after '(' : "(-6"
+				(operators.find(std::string(1, str[i - 1])) != operators.end());
+			// after another operator: "*-6", "+-6", etc.
 
-			char a = str[i];
-			char b = str[i + 1];
+			if (isUnary) {
+				str.insert(i, "0");
+				++i; // skip inserted '0'
+			}
+		}
+	}
+	// 2) Turn binary-minus followed by unary-minus (encoded as -0-) into plus:
+	//    "6-0-6" -> "6+6", "(2)-0-3" -> "(2)+3"
+	for (size_t i = 0; i + 3 < str.size(); /* increment inside */) {
+		// we look for pattern: [something] '-' '0' '-'
+		if (str[i + 1] == '-' && str[i + 2] == '0' && str[i + 3] == '-') {
+			// Optional: check that str[i] is a valid "left" (digit, ')') and
+			// str[i+4] (if exists) is a valid "right" (digit, '('), but often not necessary.
 
-			char result;
-			if (a == b) result = '+';  // "--" or "++" -> "+"
-			else        result = '-';  // "+-" or "-+" -> "-"
+			// Replace "-0-" with "+"
+			str.replace(i + 1, 3, "+"); // now string shrinks by 2 chars
 
-			str.replace(i, 2, std::string(1, result));
-			// Step back if possible to catch chains like "6---6"
+			// Step back a bit to catch chains like "6-0-0-6" if they ever occur
 			if (i > 0) --i;
+		}
+		else {
+			++i;
 		}
 	}
 
