@@ -14,6 +14,9 @@
 #define SEVEN_BUTTON 2007 
 #define EIGHT_BUTTON 2008
 #define NINE_BUTTON 2009 
+#define CE_BUTTON     2010   // "CE"
+#define C_BUTTON      2011   // "C"  (clear everything)
+#define DEL_BUTTON    2012   // "DEL"
 #include <io.h>
 #include <fcntl.h>
 #include "Calculator_app.h"
@@ -236,6 +239,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             
         }
         break;
+
     case WM_PAINT:
         {
             PAINTSTRUCT ps;

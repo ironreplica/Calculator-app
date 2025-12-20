@@ -7,6 +7,28 @@
 #include <locale>
 #include <codecvt>
 
+/* ----- Problems found -----
+     * Problem 1:
+     * Code does not currently support negatives. Once you operate on a negative it breaks,
+     * since the expression tree treats all negatives as the operator...
+     *
+     * Potential Fix:
+     * Will likely have to add a new property with its own precedence for unary negative values.
+     *
+     * Problem 2:
+     * ClearEntry() does not operate like a normal calculator. CE needs to clear the last number typed.
+     * Not the last character typed.
+     *
+     * Potential Fix:
+     * Some type of preprocessing to seperate the numbers. This will add complexity with the ExpressionTree.
+     *
+     * Problem 3:
+     * Unclosed parentheses cause crash.
+     *
+     * Potential Fix:
+     * Add error handling code to remove unclosed parenthese before computing.
+     * --------------------------
+    */
 
 HWND windowHandle;
 
@@ -15,41 +37,46 @@ void calculator_functionality::CreatePopup(HWND hwnd) {
 }
 void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
      
-    /* ----- Problems found -----
-     * Problem 1: 
-     * Code does not currently support negatives. Once you operate on a negative it breaks,
-     * since the expression tree treats all negatives as the operator... 
-     * 
-     * Potential Fix:
-     * Will likely have to add a new property with its own precedence for unary negative values.
-     * 
-     * Problem 2:
-     * ClearEntry() does not operate like a normal calculator. CE needs to clear the last number typed.
-     * Not the last character typed.
-     * 
-     * Potential Fix:
-     * Some type of preprocessing to seperate the numbers. This will add complexity with the ExpressionTree.
-     * 
-     * Problem 3:
-     * Unclosed parentheses cause crash. 
-     * 
-     * Potential Fix:
-     * Add error handling code to remove unclosed parenthese before computing.
-     * --------------------------
-    */
-
     wchar_t selectedChar = character[0];
 
     if (!IsWindow(windowHandle)) {
         windowHandle = hWnd;
     }
-    //if (!numberList.empty() && numberList.back() != "+" && numberList.back() != "-" && numberList.back() != "*" && numberList.back() != "/") {
-    //    numberList.back() += std::to_string(num); // Appends the number to the last item
-    //}
-    //else {
-    //    numberList.push_back(std::to_string(num)); // If empty, add as new item
-    //}
+  
     HWND hEdit = GetDlgItem(hWnd, 1000); // Get handle to edit control
+
+    // ---------- handle multi-character buttons first ----------
+    if (wcscmp(character, L"CE") == 0) { // works like C button for now
+        // Clear current entry: set edit to "0"
+        SetWindowTextW(hEdit, L"0");
+        return;
+    }
+
+    if (wcscmp(character, L"C") == 0) {
+        // Clear ALL: clear expression state and display
+        expression.clear();          // your expression storage
+        // if you track more state (storedValue, pendingOp, etc.), reset here
+        SetWindowTextW(hEdit, L"0");
+        return;
+    }
+
+    if (wcscmp(character, L"DEL") == 0) { // deletes last character 
+        // Delete last character from the edit control
+        int length = GetWindowTextLengthW(hEdit);
+        if (length > 0) {
+            std::wstring currentText(length, L'\0');
+            GetWindowTextW(hEdit, &currentText[0], length + 1);
+
+            if (!currentText.empty()) {
+                currentText.pop_back();
+                if (currentText.empty()) {
+                    currentText = L"0";
+                }
+                SetWindowTextW(hEdit, currentText.c_str());
+            }
+        }
+        return;
+    }
 
     // Get the current text length
     int length = GetWindowTextLengthW(hEdit);
