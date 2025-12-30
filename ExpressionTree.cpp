@@ -77,10 +77,7 @@ void ExpressionTree::FromString(const std::string &expressionString)
 			bool isUnary =
 				(i == 0) ||
 				(str[i - 1] == '(') ||
-				(
-					operators.find(std::string(1, str[i - 1])) != operators.end() &&
-					str[i - 1] != ')'
-					);
+				(operators.find(std::string(1, str[i - 1])) != operators.end() && str[i - 1] != ')');
 
 
 			if (isUnary) {
