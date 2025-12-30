@@ -1,4 +1,4 @@
-#include "calculator_functionality.h"
+﻿#include "calculator_functionality.h"
 #include <windows.h>  // Optional if already included in header
 #include <vector> //  Vector used to create a list
 #include <iostream>
@@ -31,7 +31,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
     // ---------- handle multi-character buttons first ----------
     if (wcscmp(character, L"CE") == 0) { // works like C button for now
         // Clear current entry: set edit to "0"
-        SetWindowTextW(hEdit, L"0");
+        SetWindowTextW(hEdit, L" ");
         return;
     }
 
@@ -39,7 +39,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
         // Clear ALL: clear expression state and display
         expression.clear();          // your expression storage
         // if you track more state (storedValue, pendingOp, etc.), reset here
-        SetWindowTextW(hEdit, L"0");
+        SetWindowTextW(hEdit, L" ");
         return;
     }
 
@@ -53,7 +53,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
             if (!currentText.empty()) {
                 currentText.pop_back();
                 if (currentText.empty()) {
-                    currentText = L"0";
+                    currentText = L" ";
                 }
                 SetWindowTextW(hEdit, currentText.c_str());
             }
@@ -76,11 +76,11 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
         ClearEntry();
         break;
         // --- Operators ---
-    case L'�':
+    case L'×':
         // set character to *, now the expression tree can recognize it
         selectedChar = L'*';
         break;
-    case L'�':
+    case L'÷':
         selectedChar = L'/';
         break;
     default:
@@ -153,53 +153,35 @@ void calculator_functionality::ClearEntry()
 * @brief Pre processes the expression from a wstring and resets the text box.
 * @param expression takes in a wide string expression to compute.
 */
-std::string calculator_functionality::PreProcess(std::wstring expression) {
-    /*
-    * 
-    * 
-    * 
-    * 
-    * 
-    * 
-    */
-    // Get handle to edit control
-    HWND hEdit = GetDlgItem(windowHandle, 1000);
+std::string calculator_functionality::PreProcess(std::wstring expression)
+{
+    HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
 
     // creating a converter object to convert UTF-16 wide strings (wstring) to UTF-8 narrow strings (string)
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 
-    // converts the wstring into a string (UTF-8 bytes) for use in the expression tree, since it expects narrow strings
+    // converts the wstring into a string (UTF-8 bytes) for use in the expression tree
     std::string expressionString = converter.to_bytes(expression);
     std::cout << expressionString << std::endl;
-    
-    std::string tempExpStr = expressionString;
-    for (size_t i = 0; i < tempExpStr.size(); ++i) {
-        if (tempExpStr[i] == ')') {
-            return "Err";
-            break;
-        }
-        else if (tempExpStr[i] == '(') {
-            bool foundClose = false;
 
-            for (size_t j = i + 1; j < tempExpStr.size(); ++j) {
-                if (tempExpStr[j] == ')') {
-                    foundClose = true;
-                    tempExpStr.erase(j, 1);
-                    tempExpStr.erase(i, 1);
-                    i--;
-                    break;
-                }
-                if (j == tempExpStr.length() - 1) {
-                    // here you expect syntax error
-                    return "Err";
-                }
-            }
-
-            // Alternative syntax error check:
-            if (!foundClose) {
-                // syntax error here is guaranteed to run whenever '(' has no ')'
-            }
+    int depth = 0;
+    for (char c : expressionString) {
+        if (c == '(') {
+            ++depth;
         }
+        else if (c == ')') {
+            if (depth == 0) {
+                // More closing than opening → syntax error
+                MessageBoxA(windowHandle, "Syntax error", "Error", MB_OK | MB_ICONERROR);
+                return "Err";
+            }
+            --depth;
+        }
+    }
+    if (depth != 0) {
+        // Some '(' were never closed
+        MessageBoxA(windowHandle, "Syntax error", "Error", MB_OK | MB_ICONERROR);
+        return "Err";
     }
     return expressionString;
 }
