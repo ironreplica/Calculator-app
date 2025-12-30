@@ -21,7 +21,7 @@ protected: // look into using lambdas here
 	static double Subtract(double x, double y) { return x - y; }
 	static double Multiply(double x, double y) { return x * y; }
 	static double Divide(double x, double y) { return x / y; }
-	static double UnaryMinus(double a, double b) { return -a; }
+	//static double UnaryMinus(double a, double b) { return -a; }
 
 	// this is a function pointer, return value first, then parameters 
 	typedef double (*OperatorFunc)(double, double);

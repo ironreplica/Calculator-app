@@ -14,7 +14,7 @@ ExpressionTree::ExpressionTree(const std::string& str)
 		operators["-"] = ExpressionTree::OperatorInfo(0, ExpressionTree::Subtract);
 		operators["*"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Multiply);
 		operators["/"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Divide);
-		operators["u-"] = ExpressionTree::OperatorInfo(2, ExpressionTree::UnaryMinus);
+		//operators["u-"] = ExpressionTree::OperatorInfo(2, ExpressionTree::UnaryMinus);
 		operators["("] = ExpressionTree::OperatorInfo(-1, NULL);
 		operators[")"] = ExpressionTree::OperatorInfo(-1, NULL);
 		operators["#"] = ExpressionTree::OperatorInfo(-1, NULL);
@@ -75,46 +75,51 @@ void ExpressionTree::FromString(const std::string &expressionString)
 	for (size_t i = 0; i < str.size(); ++i) {
 		if (str[i] == '-') {
 			bool isUnary =
-				(i == 0) ||                       // at start: "-6"
-				(str[i - 1] == '(') ||            // after '(' : "(-6"
+				(i == 0) ||
+				(str[i - 1] == '(') ||
 				(operators.find(std::string(1, str[i - 1])) != operators.end());
-			// after another operator: "*-6", "+-6", etc.
 
 			if (isUnary) {
-				str.insert(i, "0");
-				++i; // skip inserted '0'
+				size_t start = i;       // position of '-'
+				size_t j = i + 1;
+
+				// skip whitespace
+				while (j < str.size() && str[j] == ' ') j++;
+
+				// read number
+				while (j < str.size() && (isdigit(str[j]) || str[j] == '.')) j++;
+
+				// wrap "-number" as "(-number)"
+				str.insert(j, ")");
+				str.insert(start, "(");
+
+				i += 1; // move past '('
 			}
 		}
 	}
-	// 2) Turn binary-minus followed by unary-minus (encoded as -0-) into plus:
-	//    "6-0-6" -> "6+6", "(2)-0-3" -> "(2)+3"
-	for (size_t i = 0; i + 3 < str.size(); /* increment inside */) {
-		// we look for pattern: [something] '-' '0' '-'
-		if (str[i + 1] == '-' && str[i + 2] == '0' && str[i + 3] == '-') {
-			// Optional: check that str[i] is a valid "left" (digit, ')') and
-			// str[i+4] (if exists) is a valid "right" (digit, '('), but often not necessary.
 
-			// Replace "-0-" with "+"
-			str.replace(i + 1, 3, "+"); // now string shrinks by 2 chars
-
-			// Step back a bit to catch chains like "6-0-0-6" if they ever occur
-			if (i > 0) --i;
-		}
-		else {
-			++i;
-		}
-	}
-
+	
 
 	// need more explanation on size_t
 	for (size_t i = 0; i < str.length(); ++i) {
 		std::string op;
 		op.push_back(str[i]); // what this do
 		if (operators.find(op) != operators.end()) {
-			// how does this work
+
+			// DON'T split negative numbers
+			if (str[i] == '-') {
+				bool partOfNumber =
+					(i + 1 < str.length() && isdigit(str[i + 1])) &&
+					(i == 0 || str[i - 1] == '(' || str[i - 1] == ' ');
+
+				if (partOfNumber)
+					continue;
+			}
+
 			AddWhitespace(i + 1, i + 1, str);
 			AddWhitespace(i - 1, i, str);
 		}
+
 	}
 
 	std::stack<std::string> operatorStack;
