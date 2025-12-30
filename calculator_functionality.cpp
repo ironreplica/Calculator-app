@@ -51,9 +51,9 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
                 currentText.pop_back();
             }
 
-            // If everything was removed, show 0
+            // If everything was removed, show nothing
             if (currentText.empty()) {
-                currentText = L"0";
+                currentText = L" ";
             }
 
             SetWindowTextW(hEdit, currentText.c_str());
@@ -65,7 +65,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
         // Clear ALL: clear expression state and display
         expression.clear();          // your expression storage
         // if you track more state (storedValue, pendingOp, etc.), reset here
-        SetWindowTextW(hEdit, L"0");
+        SetWindowTextW(hEdit, L" ");
         return;
     }
 
@@ -79,7 +79,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
             if (!currentText.empty()) {
                 currentText.pop_back();
                 if (currentText.empty()) {
-                    currentText = L"0";
+                    currentText = L" ";
                 }
                 SetWindowTextW(hEdit, currentText.c_str());
             }
