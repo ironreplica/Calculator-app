@@ -44,10 +44,7 @@ double ExpressionTree::Evaluate(ExpressionTree::Node* node) const
 
 	return val;
 }
-double ExpressionTree::UnaryMinus(double a, double b/*unused*/)
-{
-	return -a;
-}
+
 std::string ExpressionTree::Expression() const
 {
 	return std::string();

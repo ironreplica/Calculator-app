@@ -14,7 +14,6 @@ public:
 	~ExpressionTree(); // deconstructor
 
 	double Evaluate(ExpressionTree::Node* node = NULL) const;
-	double UnaryMinus(double a, double);
 	std::string Expression() const;
 
 protected: // look into using lambdas here
