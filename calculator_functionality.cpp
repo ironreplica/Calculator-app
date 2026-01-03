@@ -75,6 +75,10 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
     case L'CE':
         ClearEntry();
         break;
+    case L'±':
+        positivenegative();
+        return;
+        break;
         // --- Operators ---
     case L'×':
         // set character to *, now the expression tree can recognize it
@@ -85,7 +89,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
         break;
     default:
 
-        break;
+        break; 
     }
     // Default case for anything thats not part of the expression tree inherently
 
@@ -149,6 +153,57 @@ void calculator_functionality::ClearEntry()
     // Setting the window text
     SetWindowText(hEdit, curExpression.c_str());
 }
+void calculator_functionality::positivenegative()
+{
+    HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
+
+    std::wstring expr = calculator_functionality::GetCurrentExpression();
+    if (expr.empty())
+        return;
+
+    // 1. Find start of last number: scan backward until an operator or start
+    int i = static_cast<int>(expr.size()) - 1;
+
+    while (i >= 0 && iswspace(expr[i]))
+        --i;
+
+    if (i < 0)
+        return;
+
+    // Move left while characters are part of the number (digits, dot, maybe others)
+    while (i >= 0 && (iswdigit(expr[i]) || expr[i] == L'.'))
+        --i;
+
+    // Now i is at: -1, or an operator, or an existing sign before this number
+    int numberStart = i + 1;
+    if (numberStart >= static_cast<int>(expr.size()))
+        return; // no number found
+
+    // 2. Check if there is already a unary minus *immediately* before the number
+    bool hasUnaryMinus = (i >= 0 && expr[i] == L'-');
+
+    std::wstring lastNumber = expr.substr(numberStart);
+
+    if (lastNumber == L"0" || lastNumber == L"-0")
+    {
+        //don't toggle 0 to -0
+        return;
+    }
+
+    if (hasUnaryMinus)
+    {
+        // Remove the unary minus
+        expr.erase(i, 1); // remove that '-'
+    }
+    else
+    {
+        // Insert a unary minus right before this number
+        expr.insert(numberStart, 1, L'-');
+    }
+
+    SetWindowText(hEdit, expr.c_str());
+}
+
 /**
 * @brief Pre processes the expression from a wstring and resets the text box.
 * @param expression takes in a wide string expression to compute.

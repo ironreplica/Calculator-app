@@ -16,5 +16,6 @@ private:
 	void Compute(std::wstring expression);
 	std::wstring GetCurrentExpression();
 	void ClearEntry();
+	void positivenegative();
 	std::string PreProcess(std::wstring expression);
 };
