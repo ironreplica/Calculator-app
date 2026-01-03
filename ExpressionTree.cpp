@@ -79,22 +79,10 @@ void ExpressionTree::FromString(const std::string &expressionString)
 				(str[i - 1] == '(') ||
 				(operators.find(std::string(1, str[i - 1])) != operators.end() && str[i - 1] != ')');
 
-
 			if (isUnary) {
-				size_t start = i;       // position of '-'
-				size_t j = i + 1;
-
-				// skip whitespace
-				while (j < str.size() && str[j] == ' ') j++;
-
-				// read number
-				while (j < str.size() && (isdigit(str[j]) || str[j] == '.')) j++;
-
-				// wrap "-number" as "(-number)"
-				str.insert(j, ")");
-				str.insert(start, "(");
-
-				i += 1; // move past '('
+				// Insert "0" before '-'
+				str.insert(i, "0");
+				i += 1; // skip the inserted 0
 			}
 		}
 	}
