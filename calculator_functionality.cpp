@@ -6,6 +6,8 @@
 #include "ExpressionTree.h"
 #include <locale>
 #include <codecvt>
+#include <cwctype>  
+#include <cmath>
 
 
 HWND windowHandle;
@@ -78,6 +80,10 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
     case L'±':
         positivenegative();
         return;
+        break;
+    case L'x^2':
+        squaring();
+		return;
         break;
         // --- Operators ---
     case L'×':
@@ -202,6 +208,53 @@ void calculator_functionality::positivenegative()
     }
 
     SetWindowText(hEdit, expr.c_str());
+}
+
+void calculator_functionality::squaring()
+{
+    HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
+
+    if (!hEdit) return;
+
+    std::wstring expr = GetCurrentExpression();
+    if (expr.empty()) return;
+
+    // 1. Find end of last number (skip trailing spaces)
+    int i = static_cast<int>(expr.size()) - 1;
+    while (i >= 0 && iswspace(expr[i])) --i;
+    if (i < 0) return;
+
+    int end = i;
+
+    // 2. Walk left over digits and decimal point
+    while (i >= 0 && (iswdigit(expr[i]) || expr[i] == L'.')) --i;
+
+    // 3. Optional leading sign directly before the number
+    if (i >= 0 && (expr[i] == L'-' || expr[i] == L'+'))
+        --i;
+
+    int start = i + 1;
+    if (start > end) return; // no number found
+
+    // 4. Extract, square, and replace
+    std::wstring numberStr = expr.substr(start, end - start + 1);
+
+    // Convert to double
+    wchar_t* endPtr = nullptr;
+    double value = wcstod(numberStr.c_str(), &endPtr);
+    if (endPtr == numberStr.c_str()) return; // parse failed
+
+    double squared = value * value; // or pow(value, 2.0);
+
+    // Format back to string
+    wchar_t buffer[64];
+    _snwprintf_s(buffer, _TRUNCATE, L"%g", squared);
+    std::wstring squaredStr = buffer;
+
+    // Replace the last number with its square
+    expr.replace(start, end - start + 1, squaredStr);
+
+    SetWindowTextW(hEdit, expr.c_str());
 }
 
 /**

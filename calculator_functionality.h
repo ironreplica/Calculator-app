@@ -17,5 +17,6 @@ private:
 	std::wstring GetCurrentExpression();
 	void ClearEntry();
 	void positivenegative();
+	void squaring();
 	std::string PreProcess(std::wstring expression);
 };
