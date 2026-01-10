@@ -3,44 +3,67 @@
 #include <string>
 #include <map>
 #include <sstream>
+#include <mutex>
 
 ExpressionTree::operator_map ExpressionTree::operators;
+std::mutex ExpressionTree::operatorsMutex;
+
 ExpressionTree::ExpressionTree(const std::string& str)
 {
+	// Thread-safe initialization of operators map
+	std::lock_guard<std::mutex> lock(operatorsMutex);
 	if (operators.empty()) {
-		// populate list when the operator list is empty. Not thread safe operation
-		// make thread safe
 		operators["+"] = ExpressionTree::OperatorInfo(0, ExpressionTree::Add);
 		operators["-"] = ExpressionTree::OperatorInfo(0, ExpressionTree::Subtract);
 		operators["*"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Multiply);
 		operators["/"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Divide);
-		//operators["u-"] = ExpressionTree::OperatorInfo(2, ExpressionTree::UnaryMinus);
 		operators["("] = ExpressionTree::OperatorInfo(-1, NULL);
 		operators[")"] = ExpressionTree::OperatorInfo(-1, NULL);
 		operators["#"] = ExpressionTree::OperatorInfo(-1, NULL);
-
 	}
 	FromString(str);
 }
 
-// Deconstructor
+// Destructor - properly deletes the tree to prevent memory leaks
 ExpressionTree::~ExpressionTree()
 {
+	DeleteTree(root);
+}
+
+void ExpressionTree::DeleteTree(Node* node)
+{
+	if (node == nullptr) {
+		return;
+	}
+	DeleteTree(node->Left);
+	DeleteTree(node->Right);
+	delete node;
 }
 
 double ExpressionTree::Evaluate(ExpressionTree::Node* node) const
 {
-	if (node == NULL) node = root; // what is root
+	if (node == nullptr) {
+		node = root;
+	}
+
+	if (node == nullptr) {
+		throw std::runtime_error("Empty expression tree");
+	}
 
 	operator_map::iterator it = operators.find(node->Value);
 	if (it != operators.end()) {
-		// we know we have found an operator, do operation on the two numbers
-		return (it->second.Func)(Evaluate(node->Left), Evaluate(node->Right)); // gets the pointer to the function, parenthesis is how you call a function pointer
+		// Found an operator, recursively evaluate left and right subtrees
+		double leftVal = Evaluate(node->Left);
+		double rightVal = Evaluate(node->Right);
+		return (it->second.Func)(leftVal, rightVal);
 	}
-	// if we didnt find an operator, dont create a new tree
+	
+	// Found a number, convert and return
 	std::istringstream ss(node->Value);
 	double val;
-	ss >> val;
+	if (!(ss >> val)) {
+		throw std::runtime_error("Invalid number: " + node->Value);
+	}
 
 	return val;
 }
@@ -51,8 +74,8 @@ std::string ExpressionTree::Expression() const
 }
 
 void AddWhitespace(int idx, int insertAt, std::string& str) {
-	// look into this if statement
-	if (idx >= 0 && insertAt >= 0 && idx < str.length() && insertAt < str.length() && str[idx] != ' ') {
+	if (idx >= 0 && insertAt >= 0 && idx < static_cast<int>(str.length()) && 
+	    insertAt < static_cast<int>(str.length()) && str[idx] != ' ') {
 		str.insert(insertAt, 1, ' ');
 	}
 }
@@ -89,12 +112,11 @@ void ExpressionTree::FromString(const std::string &expressionString)
 
 	
 
-	// need more explanation on size_t
+	// Add whitespace around operators for tokenization
 	for (size_t i = 0; i < str.length(); ++i) {
 		std::string op;
-		op.push_back(str[i]); // what this do
+		op.push_back(str[i]);
 		if (operators.find(op) != operators.end()) {
-
 			// DON'T split negative numbers
 			if (str[i] == '-') {
 				bool partOfNumber =
@@ -105,55 +127,77 @@ void ExpressionTree::FromString(const std::string &expressionString)
 					continue;
 			}
 
-			AddWhitespace(i + 1, i + 1, str);
-			AddWhitespace(i - 1, i, str);
+			AddWhitespace(static_cast<int>(i + 1), static_cast<int>(i + 1), str);
+			if (i > 0) {
+				AddWhitespace(static_cast<int>(i - 1), static_cast<int>(i), str);
+			}
 		}
-
 	}
 
 	std::stack<std::string> operatorStack;
 	operatorStack.push("#");
 	std::stack<Node*> operandStack;
 
-	// most important part of the code
+	// Parse expression using Shunting Yard algorithm
 	std::istringstream ss(str);
-	while (!ss.eof())
-	{
-		std::string s;
-		ss >> s;
-
+	std::string s;
+	while (ss >> s) {
 		if (operators.find(s) != operators.end()) {
 			if (s == "(") {
 				operatorStack.push(s);
 			}
 			else if (s == ")") {
-				while (operatorStack.top() != "(") {
+				while (!operatorStack.empty() && operatorStack.top() != "(") {
+					if (operandStack.size() < 2) {
+						throw std::runtime_error("Invalid expression: insufficient operands");
+					}
 					PopOperator(operatorStack, operandStack);
 				}
-				operatorStack.pop(); // seperates parentheses into its own string
-
-			}
-			else if (operators[operatorStack.top()].Precedence >= operators[s].Precedence) {
-				PopOperator(operatorStack, operandStack);
-				operatorStack.push(s);
+				if (operatorStack.empty() || operatorStack.top() != "(") {
+					throw std::runtime_error("Invalid expression: mismatched parentheses");
+				}
+				operatorStack.pop();
 			}
 			else {
-				// operator had a higher precedence evaluate this first
+				while (!operatorStack.empty() && operatorStack.top() != "#" && 
+				       operatorStack.top() != "(" &&
+				       operators[operatorStack.top()].Precedence >= operators[s].Precedence) {
+					if (operandStack.size() < 2) {
+						throw std::runtime_error("Invalid expression: insufficient operands");
+					}
+					PopOperator(operatorStack, operandStack);
+				}
 				operatorStack.push(s);
 			}
 		}
 		else {
 			// operand value
+			if (s.empty()) continue;
 			Node* n = new Node(s);
 			operandStack.push(n);
 		}
 	}
 
-	// special character
-	while (operatorStack.top() != "#") {
+	// Process remaining operators
+	while (!operatorStack.empty() && operatorStack.top() != "#") {
+		if (operatorStack.top() == "(") {
+			throw std::runtime_error("Invalid expression: unclosed parentheses");
+		}
+		if (operandStack.size() < 2) {
+			throw std::runtime_error("Invalid expression: insufficient operands");
+		}
 		PopOperator(operatorStack, operandStack);
 	}
 
+	if (operandStack.empty()) {
+		throw std::runtime_error("Invalid expression: no operands");
+	}
+
 	root = operandStack.top();
+	operandStack.pop();
+	
+	if (!operandStack.empty()) {
+		throw std::runtime_error("Invalid expression: too many operands");
+	}
 }
 

@@ -134,9 +134,20 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+   // Calculate window size based on button layout
+   int windowWidth = static_cast<int>(buttonWidth * 4) + 16; // 4 buttons wide + margins
+   int windowHeight = static_cast<int>(textBoxHeight + (BUTTON_COUNT / 4 + 1) * buttonHeight) + 60; // Buttons + title bar
+   
+   // Center window on screen
+   int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+   int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+   int x = (screenWidth - windowWidth) / 2;
+   int y = (screenHeight - windowHeight) / 2;
 
+   HWND hWnd = CreateWindowW(szWindowClass, szTitle, 
+      WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+      x, y, windowWidth, windowHeight, 
+      nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -167,45 +178,61 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_CREATE:
         {
+            // Create the display/edit box with better styling
             HWND hInputBox = CreateWindowW(
                 L"EDIT",                 // Class name for edit control
-                L"",                     // Default text
-                WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL, // Styles for single-line input
-                0, 0,                // X, Y position (tweak as needed)
-                buttonWidth * 4, textBoxHeight,                 // Width, Height (tweak as needed)
+                L"0",                    // Default text
+                WS_CHILD | WS_VISIBLE | WS_BORDER | ES_RIGHT | ES_READONLY | ES_AUTOHSCROLL, 
+                8, 8,                    // X, Y position with margin
+                static_cast<int>(buttonWidth * 4) - 16, static_cast<int>(textBoxHeight), // Width, Height
                 hWnd,                    // Parent window handle
-                (HMENU)1000,             // ID for input box (pick a value out of button range)
+                (HMENU)1000,             // ID for input box
                 hInst,                   // Instance handle
                 NULL                     // Pointer not needed
             );
-            // find a way to scale this with the len of button arr
-            for (int i = 0; i < 26; ++i) {
-                CreateWindowW(
+            
+            // Set font for better readability
+            HFONT hFont = CreateFontW(
+                static_cast<int>(textBoxHeight * 0.6),  // Height
+                0,                                      // Width (0 = auto)
+                0, 0,                                   // Escapement, Orientation
+                FW_NORMAL,                              // Weight
+                FALSE,                                  // Italic
+                FALSE,                                  // Underline
+                FALSE,                                  // Strikeout
+                DEFAULT_CHARSET,                        // Charset
+                OUT_DEFAULT_PRECIS,                     // Output precision
+                CLIP_DEFAULT_PRECIS,                    // Clipping precision
+                DEFAULT_QUALITY,                        // Quality
+                DEFAULT_PITCH | FF_DONTCARE,            // Pitch and family
+                L"Consolas"                             // Font name
+            );
+            SendMessage(hInputBox, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+            // Create buttons in a grid layout
+            HFONT hButtonFont = CreateFontW(
+                static_cast<int>(buttonHeight * 0.4),  // Height
+                0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+                L"Segoe UI"
+            );
+            
+            for (int i = 0; i < BUTTON_COUNT; ++i) {
+                HWND hButton = CreateWindowW(
                     L"BUTTON",                         // Button class
                     buttons[i],                        // Text label
-                    WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                    buttonWidth * (i % 4), i / 4 * buttonHeight + textBoxHeight, buttonWidth, buttonHeight,
+                    WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON,
+                    8 + static_cast<int>(buttonWidth * (i % 4)),           // X position with margin
+                    static_cast<int>(textBoxHeight + 16 + (i / 4) * buttonHeight), // Y position
+                    static_cast<int>(buttonWidth - 4), static_cast<int>(buttonHeight - 4), // Slightly smaller with spacing
                     hWnd,
-                    (HMENU)(i),                 // Assign unique ID
+                    (HMENU)(i),                        // Assign unique ID
                     hInst,
                     NULL
                 );
+                SendMessage(hButton, WM_SETFONT, reinterpret_cast<WPARAM>(hButtonFont), TRUE);
             }
 
-            //for (int i = 0; i < BUTTON_COUNT; ++i) {
-            //    std::wstring buttonLabel = std::to_wstring(abs(i - 9));
-            //    CreateWindowW(
-            //        L"BUTTON",               // Button class
-            //        buttonLabel.c_str(),                    // Text
-            //        WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, // Styles
-            //        abs(i-9) == 0 ? buttonStartXPos - buttonWidth : buttonStartXPos - (i % 3) * buttonWidth, i / 3 * buttonHeight + textBoxHeight, buttonWidth, buttonHeight,
-            //        hWnd,                    // Parent handle
-            //        (HMENU)abs(i-9),     // Button ID
-            //        hInst,                   // Instance handle
-            //        NULL                     // No menu
-            //    );
-            //}
-            
         }
         break;
 
@@ -234,6 +261,64 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 return DefWindowProc(hWnd, message, wParam, lParam);
             }
             
+        }
+        break;
+    case WM_KEYDOWN:
+        {
+            // Keyboard input support for calculator
+            wchar_t keyChar = 0;
+            bool shiftPressed = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+            
+            // Handle number keys and basic operators
+            if (wParam >= '0' && wParam <= '9') {
+                keyChar = static_cast<wchar_t>(wParam);
+                calculator_func.InsertChar(&keyChar, hWnd);
+            }
+            else if (wParam == VK_OEM_PLUS || wParam == VK_ADD || (wParam == 0xBB && !shiftPressed)) {
+                keyChar = L'+';
+                calculator_func.InsertChar(&keyChar, hWnd);
+            }
+            else if (wParam == VK_OEM_MINUS || wParam == VK_SUBTRACT || (wParam == 0xBD && !shiftPressed)) {
+                keyChar = L'-';
+                calculator_func.InsertChar(&keyChar, hWnd);
+            }
+            else if (wParam == VK_MULTIPLY || (wParam == '8' && shiftPressed)) {
+                keyChar = L'×';
+                calculator_func.InsertChar(&keyChar, hWnd);
+            }
+            else if (wParam == VK_DIVIDE || (wParam == VK_OEM_2 && !shiftPressed)) {
+                keyChar = L'÷';
+                calculator_func.InsertChar(&keyChar, hWnd);
+            }
+            else if (wParam == VK_OEM_PERIOD || wParam == VK_DECIMAL) {
+                keyChar = L'.';
+                calculator_func.InsertChar(&keyChar, hWnd);
+            }
+            else if (wParam == VK_RETURN || wParam == VK_SEPARATOR) {
+                keyChar = L'=';
+                calculator_func.InsertChar(&keyChar, hWnd);
+            }
+            else if (wParam == VK_OEM_4 || wParam == 0x39) { // '9' key with shift or ')' key
+                if (shiftPressed) {
+                    keyChar = L'(';
+                    calculator_func.InsertChar(&keyChar, hWnd);
+                }
+            }
+            else if (wParam == VK_OEM_6 || wParam == 0x30) { // '0' key with shift or ')' key
+                if (shiftPressed) {
+                    keyChar = L')';
+                    calculator_func.InsertChar(&keyChar, hWnd);
+                }
+            }
+            else if (wParam == VK_BACK || wParam == VK_DELETE) {
+                const wchar_t* del = L"DEL";
+                calculator_func.InsertChar(del, hWnd);
+            }
+            else if (wParam == VK_ESCAPE || (wParam == 'C' && !shiftPressed)) {
+                const wchar_t* clear = L"C";
+                calculator_func.InsertChar(clear, hWnd);
+            }
+            return 0;
         }
         break;
     case WM_PAINT:

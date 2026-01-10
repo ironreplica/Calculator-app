@@ -1,6 +1,9 @@
 #pragma once
 #include <string>
 #include <map>
+#include <stdexcept>
+#include <cmath>
+#include <mutex>
 class ExpressionTree
 {
 public:
@@ -16,12 +19,16 @@ public:
 	double Evaluate(ExpressionTree::Node* node = NULL) const;
 	std::string Expression() const;
 
-protected: // look into using lambdas here
+protected:
 	static double Add(double x, double y) { return x + y; }
 	static double Subtract(double x, double y) { return x - y; }
 	static double Multiply(double x, double y) { return x * y; }
-	static double Divide(double x, double y) { return x / y; }
-	//static double UnaryMinus(double a, double b) { return -a; }
+	static double Divide(double x, double y) {
+		if (std::abs(y) < 1e-10) {
+			throw std::runtime_error("Division by zero");
+		}
+		return x / y;
+	}
 
 	// this is a function pointer, return value first, then parameters 
 	typedef double (*OperatorFunc)(double, double);
@@ -39,7 +46,9 @@ protected: // look into using lambdas here
 private:
 	Node* root; // holding the root nodes 
 	std::string expression;
-
 	static operator_map operators; // all of the operator info will go in here
+	static std::mutex operatorsMutex; // Thread safety for operator map initialization
+	
+	void DeleteTree(Node* node); // Helper function to delete the tree
 };
 
