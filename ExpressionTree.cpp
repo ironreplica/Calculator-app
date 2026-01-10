@@ -15,9 +15,10 @@ ExpressionTree::ExpressionTree(const std::string& str)
 		operators["*"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Multiply);
 		operators["/"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Divide);
 		//operators["u-"] = ExpressionTree::OperatorInfo(2, ExpressionTree::UnaryMinus);
-		operators["("] = ExpressionTree::OperatorInfo(-1, NULL);
-		operators[")"] = ExpressionTree::OperatorInfo(-1, NULL);
-		operators["#"] = ExpressionTree::OperatorInfo(-1, NULL);
+		operators["^"] = ExpressionTree::OperatorInfo(-1, ExpressionTree::Exponents); 
+		operators["("] = ExpressionTree::OperatorInfo(-2, NULL);
+		operators[")"] = ExpressionTree::OperatorInfo(-2, NULL);
+		operators["#"] = ExpressionTree::OperatorInfo(-2, NULL);
 
 	}
 	FromString(str);
