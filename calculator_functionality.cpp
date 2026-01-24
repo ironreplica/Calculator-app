@@ -153,6 +153,14 @@ void calculator_functionality::ClearEntry()
     // Setting the window text
     SetWindowText(hEdit, curExpression.c_str());
 }
+/**
+*  @brief Evaluates a square root.
+*/
+void calculator_functionality::SquareRoot() {
+
+
+}
+
 void calculator_functionality::positivenegative()
 {
     HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
@@ -164,9 +172,15 @@ void calculator_functionality::positivenegative()
     // 1. Find start of last number: scan backward until an operator or start
     int i = static_cast<int>(expr.size()) - 1;
 
-    while (i >= 0 && iswspace(expr[i]))
+
+    // catching trailing white spaces
+    while (i >= 0 && iswspace(expr[i])) {
         --i;
 
+        if (expr[i] == L'-') {
+            // why wont this breakpoint get hit
+        }
+    }
     if (i < 0)
         return;
 
@@ -174,10 +188,26 @@ void calculator_functionality::positivenegative()
     while (i >= 0 && (iswdigit(expr[i]) || expr[i] == L'.'))
         --i;
 
+
+    /* BUG FIX NOTES
+    Somewhere in this loop, you need to check if theres more then one negative symbol.
+    If there is more then one negative symbol, flip the last negative to a positive,
+    if there is only 1, add an additional negative
+
+
+    */
+
     // Now i is at: -1, or an operator, or an existing sign before this number
     int numberStart = i + 1;
     if (numberStart >= static_cast<int>(expr.size()))
         return; // no number found
+
+    // Count '-' signs in the last number segment
+    int minusCount = 0;
+    for (int j = numberStart; j < static_cast<int>(expr.size()); ++j) {
+        if (expr[j] == L'-')
+            ++minusCount;
+    }
 
     // 2. Check if there is already a unary minus *immediately* before the number
     bool hasUnaryMinus = (i >= 0 && expr[i] == L'-');
