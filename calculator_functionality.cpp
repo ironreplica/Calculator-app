@@ -66,18 +66,21 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
     switch (selectedChar) {
         // --- Special buttons ---
     case L'=':
-        // Allocate buffer for current text; +1 for null terminator
-        expression = (length, L'\0');
-
-        Compute(GetCurrentExpression());
+    {
+        std::wstring expr = GetCurrentExpression();   // read current textbox
+        Compute(expr);
         return;
-        break;
+    }
+
     case L'CE':
         ClearEntry();
         break;
     case L'±':
         positivenegative();
         return;
+        break;
+    case L'x²':
+		selectedChar = L'^';
         break;
         // --- Operators ---
     case L'×':
