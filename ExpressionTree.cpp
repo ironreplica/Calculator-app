@@ -1,23 +1,30 @@
-#include "ExpressionTree.h"
+﻿#include "ExpressionTree.h"
 #include <stack>
 #include <string>
 #include <map>
 #include <sstream>
+#include <iostream>
+#include <cctype>
 
 ExpressionTree::operator_map ExpressionTree::operators;
 ExpressionTree::ExpressionTree(const std::string& str)
 {
+	std::cout << "CONSTRUCTOR CALLED with: '" << str << "'\n";  
 	if (operators.empty()) {
+		std::cout << "Initializing operators...\n";
 		operators["+"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Add);
 		operators["-"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Subtract);
 		operators["*"] = ExpressionTree::OperatorInfo(2, ExpressionTree::Multiply);
 		operators["/"] = ExpressionTree::OperatorInfo(2, ExpressionTree::Divide);
 		operators["^"] = ExpressionTree::OperatorInfo(3, ExpressionTree::Exponents);
+		operators["√"] = ExpressionTree::OperatorInfo(3, ExpressionTree::SquareRoot);
 		operators["("] = ExpressionTree::OperatorInfo(-2, NULL);
 		operators[")"] = ExpressionTree::OperatorInfo(-2, NULL);
 		operators["#"] = ExpressionTree::OperatorInfo(-2, NULL);
 	}
+	std::cout << "About to call FromString\n";
 	FromString(str);
+	std::cout << "FromString finished. root=" << (root ? "NOT NULL" : "NULL") << "\n";
 }
 
 // Deconstructor
@@ -27,20 +34,21 @@ ExpressionTree::~ExpressionTree()
 
 double ExpressionTree::Evaluate(ExpressionTree::Node* node) const
 {
-	if (node == NULL) node = root; // what is root
+	node = (node == NULL) ? root : node;  // Always ensure valid node
 
 	operator_map::iterator it = operators.find(node->Value);
 	if (it != operators.end()) {
-		// we know we have found an operator, do operation on the two numbers
-		return (it->second.Func)(Evaluate(node->Left), Evaluate(node->Right)); // gets the pointer to the function, parenthesis is how you call a function pointer
+		double left = node->Left ? Evaluate(node->Left) : 0.0;
+		double right = node->Right ? Evaluate(node->Right) : 0.0;
+		return (it->second.Func)(left, right);
 	}
-	// if we didnt find an operator, dont create a new tree
+
 	std::istringstream ss(node->Value);
 	double val;
 	ss >> val;
-
 	return val;
 }
+
 
 std::string ExpressionTree::Expression() const
 {
@@ -53,17 +61,29 @@ void AddWhitespace(int idx, int insertAt, std::string& str) {
 		str.insert(insertAt, 1, ' ');
 	}
 }
-void PopOperator(std::stack<std::string> &operatorStack, std::stack<ExpressionTree::Node*> &operandStack) {
-	ExpressionTree::Node* n = new ExpressionTree::Node(operatorStack.top());
-	operatorStack.pop();
+// Builds a node from the top operator and operand stacks.
+void PopOperator(std::stack<std::string>& operatorStack,
+	std::stack<ExpressionTree::Node*>& operandStack) {
+	std::string op = operatorStack.top();   
+	operatorStack.pop();                    
 
-	n->Right = operandStack.top();
-	operandStack.pop();
-	n->Left = operandStack.top();
-	operandStack.pop();
+	ExpressionTree::Node* n = new ExpressionTree::Node(op);  
 
-	operandStack.push(n);
+	if (op == "√") {                        // unary operator
+		n->Left = operandStack.top();     
+		operandStack.pop();                 
+		n->Right = nullptr;                  // no right child for √
+	}
+	else {                                // binary operators
+		n->Right = operandStack.top();      
+		operandStack.pop();                
+		n->Left = operandStack.top();       
+		operandStack.pop();                 
+	}
+
+	operandStack.push(n);                   
 }
+
 void ExpressionTree::FromString(const std::string &expressionString)
 {
 	std::string str(expressionString);
@@ -132,8 +152,9 @@ void ExpressionTree::FromString(const std::string &expressionString)
 			}
 			else {
 				// handle precedence and associativity
+				// Returns true for right-associative operators.
 				auto isRightAssociative = [](const std::string& op) {
-					return op == "^";
+					return op == "^" || op == "√";  
 					};
 
 				while (operatorStack.top() != "#" &&

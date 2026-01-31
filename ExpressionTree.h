@@ -24,6 +24,7 @@ protected: // look into using lambdas here
 	static double Multiply(double x, double y) { return x * y; }
 	static double Divide(double x, double y) { return x / y; }
 	static double Exponents(double x, double y) { return std::pow(x, y); }
+	static double SquareRoot(double x, double y) { return std::sqrt(x); }
 	//static double UnaryMinus(double a, double b) { return -a; }
 
 	// this is a function pointer, return value first, then parameters 
