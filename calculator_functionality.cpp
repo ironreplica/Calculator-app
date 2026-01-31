@@ -164,6 +164,25 @@ void calculator_functionality::SquareRoot() {
 
 }
 
+/**
+*  @brief Helper function to find operators other than the -
+*/
+bool FoundOtherOperator(char exp, bool excludeNegative = true) {
+    if (exp == L'-' && excludeNegative) { // cant add 2 conditions to a switch case
+        return true;
+    }
+    switch (exp){
+        case L'*':
+            return true;
+        case L'/':
+            return true;
+        case L'+':
+            return true;
+        default:
+            return false;
+    }
+    return false;
+}
 void calculator_functionality::positivenegative()
 {
     HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
@@ -179,10 +198,6 @@ void calculator_functionality::positivenegative()
     // catching trailing white spaces
     while (i >= 0 && iswspace(expr[i])) {
         --i;
-
-        if (expr[i] == L'-') {
-            // why wont this breakpoint get hit
-        }
     }
     if (i < 0)
         return;
@@ -196,43 +211,123 @@ void calculator_functionality::positivenegative()
     Somewhere in this loop, you need to check if theres more then one negative symbol.
     If there is more then one negative symbol, flip the last negative to a positive,
     if there is only 1, add an additional negative
-
-
     */
 
-    // Now i is at: -1, or an operator, or an existing sign before this number
-    int numberStart = i + 1;
-    if (numberStart >= static_cast<int>(expr.size()))
-        return; // no number found
+    // loop backwards
+    i = static_cast<int>(expr.size()) - 1;
+    int negCount = 0;
+    bool otherOp = false;
 
-    // Count '-' signs in the last number segment
-    int minusCount = 0;
-    for (int j = numberStart; j < static_cast<int>(expr.size()); ++j) {
-        if (expr[j] == L'-')
-            ++minusCount;
+
+
+    while (i >= 0) {
+        if (FoundOtherOperator(expr[i])) {
+            otherOp = true;
+        }
+        if (expr[i] == L'-') {
+            negCount++;
+            std::cout << "Hit a negative" << std::endl;
+        }
+        --i;
     }
 
-    // 2. Check if there is already a unary minus *immediately* before the number
-    bool hasUnaryMinus = (i >= 0 && expr[i] == L'-');
 
-    std::wstring lastNumber = expr.substr(numberStart);
+    // looping backwards again and applying
+    i = static_cast<int>(expr.size()) - 1;
+    negCount = 0;
+    
+    int numberStart = i + 1; // tracking the number position we will add or remove negative from
 
-    if (lastNumber == L"0" || lastNumber == L"-0")
-    {
-        //don't toggle 0 to -0
+    int indexToAddNegative = -1;
+    bool addNegative = true;
+    while (i >= 0) {
+        // tracking if we should add a negative
+        if (FoundOtherOperator(expr[i], false)) {
+            std::cout << i << std::endl;
+            indexToAddNegative = i;
+
+            if (otherOp && negCount == 0) {
+                std::cout << "Add a negative" << std::endl;
+                addNegative = true;
+                break;
+            }
+            else if (!otherOp && negCount == 1) {
+                std::cout << "Add a negative" << std::endl;
+                addNegative = true;
+                break;
+            }
+            else if (negCount > 0) {
+                std::cout << "Remove a negative" << std::endl;
+                addNegative = false;
+                break;
+            }
+            else {
+                std::cout << "Add a negative" << std::endl;
+                addNegative = true;
+                break;
+            }
+        }
+
+        --i;
+    }
+    std::cout << indexToAddNegative << std::endl;
+    if (indexToAddNegative == -1) {
+        std::cout << "ERROR NOT A VALID POSITION" << std::endl;
         return;
+        // ADD ERROR HANDLING HERE
     }
+    if (addNegative) {
+        // Adding a negative
+        expr.insert(indexToAddNegative, 1, L'-');
+    }
+    else {
+        expr.erase(indexToAddNegative, 1);
+        // Removing a negative
+    }
+    // count how many - signs there are and tracking their positions
 
-    if (hasUnaryMinus)
-    {
-        // Remove the unary minus
-        expr.erase(i, 1); // remove that '-'
-    }
-    else
-    {
-        // Insert a unary minus right before this number
-        expr.insert(numberStart, 1, L'-');
-    }
+    // when just one negative is found (and no other operators), add a new one
+
+    // anything else make, remove the negative
+
+
+
+
+    // code graveyard please leave in case we need wisdom - trevor
+
+    // Now i is at: -1, or an operator, or an existing sign before this number
+    //int numberStart = i + 1;
+    //if (numberStart >= static_cast<int>(expr.size()))
+    //    return; // no number found
+
+    //// Count '-' signs in the last number segment
+    //int minusCount = 0;
+    //for (int j = numberStart; j < static_cast<int>(expr.size()); ++j) {
+    //    if (expr[j] == L'-')
+    //        ++minusCount;
+    //}
+
+    //// 2. Check if there is already a unary minus *immediately* before the number
+    //bool hasUnaryMinus = (i >= 0 && expr[i] == L'-');
+
+    //std::wstring lastNumber = expr.substr(numberStart);
+
+    //if (lastNumber == L"0" || lastNumber == L"-0")
+    //{
+    //    //don't toggle 0 to -0
+    //    return;
+    //}
+
+    //if (hasUnaryMinus)
+    //{
+    //    // Remove the unary minus
+    //    expr.erase(i, 1); // remove that '-'
+    //}
+    //else
+    //{
+    //    // Insert a unary minus right before this number
+    //    expr.insert(numberStart, 1, L'-');
+    //}
 
     SetWindowText(hEdit, expr.c_str());
 }
