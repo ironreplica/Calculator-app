@@ -6,6 +6,8 @@
 #include "ExpressionTree.h"
 #include <locale>
 #include <codecvt>
+#include <cmath> 
+#include <string>
 
 
 HWND windowHandle;
@@ -81,6 +83,9 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
         break;
     case L'x²':
 		selectedChar = L'^';
+        break;
+	case L'√':
+		selectedChar = L'√';
         break;
         // --- Operators ---
     case L'×':
@@ -159,10 +164,6 @@ void calculator_functionality::ClearEntry()
 /**
 *  @brief Evaluates a square root.
 */
-void calculator_functionality::SquareRoot() {
-
-
-}
 
 void calculator_functionality::positivenegative()
 {
