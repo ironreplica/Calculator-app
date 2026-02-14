@@ -28,7 +28,7 @@ float buttonHeight = 40;
 float textBoxHeight = 50;
 const wchar_t* buttons[26] = {
     L"%", L"CE", L"C", L"DEL",
-    L"1/x", L"x^2", L"√", L"÷",
+    L"1/x", L"x²", L"√", L"÷",
     L"7", L"8", L"9", L"×",
     L"4", L"5", L"6", L"-",
     L"1", L"2", L"3", L"+",

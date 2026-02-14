@@ -8,17 +8,14 @@ ExpressionTree::operator_map ExpressionTree::operators;
 ExpressionTree::ExpressionTree(const std::string& str)
 {
 	if (operators.empty()) {
-		// populate list when the operator list is empty. Not thread safe operation
-		// make thread safe
-		operators["+"] = ExpressionTree::OperatorInfo(0, ExpressionTree::Add);
-		operators["-"] = ExpressionTree::OperatorInfo(0, ExpressionTree::Subtract);
-		operators["*"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Multiply);
-		operators["/"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Divide);
-		//operators["u-"] = ExpressionTree::OperatorInfo(2, ExpressionTree::UnaryMinus);
-		operators["("] = ExpressionTree::OperatorInfo(-1, NULL);
-		operators[")"] = ExpressionTree::OperatorInfo(-1, NULL);
-		operators["#"] = ExpressionTree::OperatorInfo(-1, NULL);
-
+		operators["+"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Add);
+		operators["-"] = ExpressionTree::OperatorInfo(1, ExpressionTree::Subtract);
+		operators["*"] = ExpressionTree::OperatorInfo(2, ExpressionTree::Multiply);
+		operators["/"] = ExpressionTree::OperatorInfo(2, ExpressionTree::Divide);
+		operators["^"] = ExpressionTree::OperatorInfo(3, ExpressionTree::Exponents);
+		operators["("] = ExpressionTree::OperatorInfo(-2, NULL);
+		operators[")"] = ExpressionTree::OperatorInfo(-2, NULL);
+		operators["#"] = ExpressionTree::OperatorInfo(-2, NULL);
 	}
 	FromString(str);
 }
@@ -77,27 +74,12 @@ void ExpressionTree::FromString(const std::string &expressionString)
 			bool isUnary =
 				(i == 0) ||
 				(str[i - 1] == '(') ||
-				(
-					operators.find(std::string(1, str[i - 1])) != operators.end() &&
-					str[i - 1] != ')'
-					);
-
+				(operators.find(std::string(1, str[i - 1])) != operators.end() && str[i - 1] != ')');
 
 			if (isUnary) {
-				size_t start = i;       // position of '-'
-				size_t j = i + 1;
-
-				// skip whitespace
-				while (j < str.size() && str[j] == ' ') j++;
-
-				// read number
-				while (j < str.size() && (isdigit(str[j]) || str[j] == '.')) j++;
-
-				// wrap "-number" as "(-number)"
-				str.insert(j, ")");
-				str.insert(start, "(");
-
-				i += 1; // move past '('
+				// Insert "0" before '-'
+				str.insert(i, "0");
+				i += 1; // skip the inserted 0
 			}
 		}
 	}
@@ -148,14 +130,29 @@ void ExpressionTree::FromString(const std::string &expressionString)
 				operatorStack.pop(); // seperates parentheses into its own string
 
 			}
-			else if (operators[operatorStack.top()].Precedence >= operators[s].Precedence) {
-				PopOperator(operatorStack, operandStack);
-				operatorStack.push(s);
-			}
 			else {
-				// operator had a higher precedence evaluate this first
+				// handle precedence and associativity
+				auto isRightAssociative = [](const std::string& op) {
+					return op == "^";
+					};
+
+				while (operatorStack.top() != "#" &&
+					operators.find(operatorStack.top()) != operators.end() &&
+					(
+						// left-associative: pop on >=
+						(!isRightAssociative(s) &&
+							operators[operatorStack.top()].Precedence >= operators[s].Precedence) ||
+						// right-associative: pop on >
+						(isRightAssociative(s) &&
+							operators[operatorStack.top()].Precedence > operators[s].Precedence)
+						))
+				{
+					PopOperator(operatorStack, operandStack);
+				}
+
 				operatorStack.push(s);
 			}
+
 		}
 		else {
 			// operand value

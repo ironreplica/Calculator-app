@@ -1,4 +1,4 @@
-#include "calculator_functionality.h"
+﻿#include "calculator_functionality.h"
 #include <windows.h>  // Optional if already included in header
 #include <vector> //  Vector used to create a list
 #include <iostream>
@@ -31,7 +31,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
     // ---------- handle multi-character buttons first ----------
     if (wcscmp(character, L"CE") == 0) { // works like C button for now
         // Clear current entry: set edit to "0"
-        SetWindowTextW(hEdit, L"0");
+        SetWindowTextW(hEdit, L" ");
         return;
     }
 
@@ -39,7 +39,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
         // Clear ALL: clear expression state and display
         expression.clear();          // your expression storage
         // if you track more state (storedValue, pendingOp, etc.), reset here
-        SetWindowTextW(hEdit, L"0");
+        SetWindowTextW(hEdit, L" ");
         return;
     }
 
@@ -53,7 +53,7 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
             if (!currentText.empty()) {
                 currentText.pop_back();
                 if (currentText.empty()) {
-                    currentText = L"0";
+                    currentText = L" ";
                 }
                 SetWindowTextW(hEdit, currentText.c_str());
             }
@@ -66,26 +66,33 @@ void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
     switch (selectedChar) {
         // --- Special buttons ---
     case L'=':
-        // Allocate buffer for current text; +1 for null terminator
-        expression = (length, L'\0');
-
-        Compute(GetCurrentExpression());
+    {
+        std::wstring expr = GetCurrentExpression();   // read current textbox
+        Compute(expr);
         return;
-        break;
+    }
+
     case L'CE':
         ClearEntry();
         break;
+    case L'±':
+        positivenegative();
+        return;
+        break;
+    case L'x²':
+		selectedChar = L'^';
+        break;
         // --- Operators ---
-    case L'�':
+    case L'×':
         // set character to *, now the expression tree can recognize it
         selectedChar = L'*';
         break;
-    case L'�':
+    case L'÷':
         selectedChar = L'/';
         break;
     default:
 
-        break;
+        break; 
     }
     // Default case for anything thats not part of the expression tree inherently
 
@@ -150,56 +157,119 @@ void calculator_functionality::ClearEntry()
     SetWindowText(hEdit, curExpression.c_str());
 }
 /**
+*  @brief Evaluates a square root.
+*/
+void calculator_functionality::SquareRoot() {
+
+
+}
+
+void calculator_functionality::positivenegative()
+{
+    HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
+
+    std::wstring expr = calculator_functionality::GetCurrentExpression();
+    if (expr.empty())
+        return;
+
+    // 1. Find start of last number: scan backward until an operator or start
+    int i = static_cast<int>(expr.size()) - 1;
+
+
+    // catching trailing white spaces
+    while (i >= 0 && iswspace(expr[i])) {
+        --i;
+
+        if (expr[i] == L'-') {
+            // why wont this breakpoint get hit
+        }
+    }
+    if (i < 0)
+        return;
+
+    // Move left while characters are part of the number (digits, dot, maybe others)
+    while (i >= 0 && (iswdigit(expr[i]) || expr[i] == L'.'))
+        --i;
+
+
+    /* BUG FIX NOTES
+    Somewhere in this loop, you need to check if theres more then one negative symbol.
+    If there is more then one negative symbol, flip the last negative to a positive,
+    if there is only 1, add an additional negative
+
+
+    */
+
+    // Now i is at: -1, or an operator, or an existing sign before this number
+    int numberStart = i + 1;
+    if (numberStart >= static_cast<int>(expr.size()))
+        return; // no number found
+
+    // Count '-' signs in the last number segment
+    int minusCount = 0;
+    for (int j = numberStart; j < static_cast<int>(expr.size()); ++j) {
+        if (expr[j] == L'-')
+            ++minusCount;
+    }
+
+    // 2. Check if there is already a unary minus *immediately* before the number
+    bool hasUnaryMinus = (i >= 0 && expr[i] == L'-');
+
+    std::wstring lastNumber = expr.substr(numberStart);
+
+    if (lastNumber == L"0" || lastNumber == L"-0")
+    {
+        //don't toggle 0 to -0
+        return;
+    }
+
+    if (hasUnaryMinus)
+    {
+        // Remove the unary minus
+        expr.erase(i, 1); // remove that '-'
+    }
+    else
+    {
+        // Insert a unary minus right before this number
+        expr.insert(numberStart, 1, L'-');
+    }
+
+    SetWindowText(hEdit, expr.c_str());
+}
+
+/**
 * @brief Pre processes the expression from a wstring and resets the text box.
 * @param expression takes in a wide string expression to compute.
 */
-std::string calculator_functionality::PreProcess(std::wstring expression) {
-    /*
-    * 
-    * 
-    * 
-    * 
-    * 
-    * 
-    */
-    // Get handle to edit control
-    HWND hEdit = GetDlgItem(windowHandle, 1000);
+std::string calculator_functionality::PreProcess(std::wstring expression)
+{
+    HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
 
     // creating a converter object to convert UTF-16 wide strings (wstring) to UTF-8 narrow strings (string)
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 
-    // converts the wstring into a string (UTF-8 bytes) for use in the expression tree, since it expects narrow strings
+    // converts the wstring into a string (UTF-8 bytes) for use in the expression tree
     std::string expressionString = converter.to_bytes(expression);
     std::cout << expressionString << std::endl;
-    
-    std::string tempExpStr = expressionString;
-    for (size_t i = 0; i < tempExpStr.size(); ++i) {
-        if (tempExpStr[i] == ')') {
-            return "Err";
-            break;
-        }
-        else if (tempExpStr[i] == '(') {
-            bool foundClose = false;
 
-            for (size_t j = i + 1; j < tempExpStr.size(); ++j) {
-                if (tempExpStr[j] == ')') {
-                    foundClose = true;
-                    tempExpStr.erase(j, 1);
-                    tempExpStr.erase(i, 1);
-                    i--;
-                    break;
-                }
-                if (j == tempExpStr.length() - 1) {
-                    // here you expect syntax error
-                    return "Err";
-                }
-            }
-
-            // Alternative syntax error check:
-            if (!foundClose) {
-                // syntax error here is guaranteed to run whenever '(' has no ')'
-            }
+    int depth = 0;
+    for (char c : expressionString) {
+        if (c == '(') {
+            ++depth;
         }
+        else if (c == ')') {
+            if (depth == 0) {
+                // More closing than opening → syntax error
+                MessageBoxA(windowHandle, "Syntax error", "Error", MB_OK | MB_ICONERROR);
+                return "Err";
+            }
+            --depth;
+        }
+    }
+    if (depth != 0) {
+        // Some '(' were never closed
+        MessageBoxA(windowHandle, "Syntax error", "Error", MB_OK | MB_ICONERROR);
+        return "Err";
     }
     return expressionString;
 }
