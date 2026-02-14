@@ -38,6 +38,7 @@ protected: // look into using lambdas here
 
 	// defining the map
 	typedef std::map<std::string, OperatorInfo> operator_map;
+	void DeleteTree(Node* node);
 	void FromString(const std::string& str); // what this for
 
 private:
