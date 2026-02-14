@@ -1,6 +1,4 @@
-# Calculator app
-
-# 📘 C++ Calculator
+# C++ Calculator
 
 A simple calculator built in **C++** that can currently do basic operations such as addition, subtraction, multiplication, and division. 
 
