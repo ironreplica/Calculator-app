@@ -1,250 +1,20 @@
 ﻿#include "calculator_functionality.h"
-#include <windows.h>  // Optional if already included in header
-#include <vector> //  Vector used to create a list
-#include <iostream>
-#include "Calculator_app.h"
 #include "ExpressionTree.h"
+
+#include <iostream>
+#include <vector> //  Vector used to create a list
 #include <locale>
 #include <codecvt>
 #include <cmath> 
 #include <string>
 
-
-HWND windowHandle;
-
-void calculator_functionality::CreatePopup(HWND hwnd) {
-    MessageBox(hwnd, L"Hello from CreatePopup!", L"Info", MB_OK);
-}
-/**
-* @brief Inserts a char into the text box.
-* @param character takes in a character to insert.
-* @param hWnd takes in the HWND handle.
-*/
-void calculator_functionality::InsertChar(const wchar_t* character, HWND hWnd) {
-
-    wchar_t selectedChar = character[0];
-
-    if (!IsWindow(windowHandle)) {
-        windowHandle = hWnd;
-    }
-
-    HWND hEdit = GetDlgItem(hWnd, 1000); // Get handle to edit control
-
-    // ---------- handle multi-character buttons first ----------
-    if (wcscmp(character, L"CE") == 0) { // works like C button for now
-        // Clear current entry: set edit to "0"
-        SetWindowTextW(hEdit, L" ");
-        return;
-    }
-
-    if (wcscmp(character, L"C") == 0) {
-        // Clear ALL: clear expression state and display
-        expression.clear();          // your expression storage
-        // if you track more state (storedValue, pendingOp, etc.), reset here
-        SetWindowTextW(hEdit, L" ");
-        return;
-    }
-
-    if (wcscmp(character, L"DEL") == 0) { // deletes last character 
-        // Delete last character from the edit control
-        int length = GetWindowTextLengthW(hEdit);
-        if (length > 0) {
-            std::wstring currentText(length, L'\0');
-            GetWindowTextW(hEdit, &currentText[0], length + 1);
-
-            if (!currentText.empty()) {
-                currentText.pop_back();
-                if (currentText.empty()) {
-                    currentText = L" ";
-                }
-                SetWindowTextW(hEdit, currentText.c_str());
-            }
-        }
-        return;
-    }
-
-    // Get the current text length
-    int length = GetWindowTextLengthW(hEdit);
-    switch (selectedChar) {
-        // --- Special buttons ---
-    case L'=':
-    {
-        std::wstring expr = GetCurrentExpression();   // read current textbox
-        Compute(expr);
-        return;
-    }
-
-    case L'CE':
-        ClearEntry();
-        break;
-    case L'±':
-        positivenegative();
-        return;
-        break;
-    case L'x²':
-		selectedChar = L'^';
-        break;
-	case L'√':
-		selectedChar = L'√';
-        break;
-        // --- Operators ---
-    case L'×':
-        // set character to *, now the expression tree can recognize it
-        selectedChar = L'*';
-        break;
-    case L'÷':
-        selectedChar = L'/';
-        break;
-    default:
-
-        break; 
-    }
-    // Default case for anything thats not part of the expression tree inherently
-
-    // Get the current text length
-    //int length = GetWindowTextLengthW(hEdit);
-
-    // Allocate buffer for current text; +1 for null terminator
-    std::wstring currentText(length, L'\0');
-
-    GetWindowTextW(hEdit, &currentText[0], length + 1);
-
-    // Convert single wide character to temp wide string
-    std::wstring ws(1, selectedChar);
-
-    // Convert the incoming wchar_t* to std::wstring
-    std::wstring wTextToAppend(ws);
-
-    // Append the incoming character(s)
-    currentText += wTextToAppend;
-
-    // Set the new text back to the edit control
-    SetWindowTextW(hEdit, currentText.c_str());
-}
-std::wstring calculator_functionality::GetCurrentExpression() {
-    HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
-    if (!hEdit) {
-        return L"";
-    }
-
-    // Get the current text length (excluding null terminator)
-    int length = GetWindowTextLengthW(hEdit);
-    if (length <= 0) {
-        return L"";
-    }
-
-    // Allocate buffer for current text; +1 for null terminator
-    std::wstring text(length + 1, L'\0');
-
-    // Read the text into the buffer
-    GetWindowTextW(hEdit, &text[0], length + 1);
-
-    // Remove the trailing null so the wstring has exactly 'length' characters
-    text.resize(length);
-
-    return text;
-}
-
-/**
-*  @brief Clears the last item on the expression string.
-*/
-void calculator_functionality::ClearEntry()
+std::wstring calculator_functionality::GetCurrentExpression() 
 {
-    HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
-    
-    // Getting current expression
-    std::wstring curExpression = calculator_functionality::GetCurrentExpression();
-
-    // Removing the last typed character.
-    curExpression.pop_back();
-
-    // Setting the window text
-    SetWindowText(hEdit, curExpression.c_str());
-}
-/**
-*  @brief Evaluates a square root.
-*/
-
-void calculator_functionality::positivenegative()
-{
-    HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
-
-    std::wstring expr = calculator_functionality::GetCurrentExpression();
-    if (expr.empty())
-        return;
-
-    // 1. Find start of last number: scan backward until an operator or start
-    int i = static_cast<int>(expr.size()) - 1;
-
-
-    // catching trailing white spaces
-    while (i >= 0 && iswspace(expr[i])) {
-        --i;
-
-        if (expr[i] == L'-') {
-            // why wont this breakpoint get hit
-        }
-    }
-    if (i < 0)
-        return;
-
-    // Move left while characters are part of the number (digits, dot, maybe others)
-    while (i >= 0 && (iswdigit(expr[i]) || expr[i] == L'.'))
-        --i;
-
-
-    /* BUG FIX NOTES
-    Somewhere in this loop, you need to check if theres more then one negative symbol.
-    If there is more then one negative symbol, flip the last negative to a positive,
-    if there is only 1, add an additional negative
-
-
-    */
-
-    // Now i is at: -1, or an operator, or an existing sign before this number
-    int numberStart = i + 1;
-    if (numberStart >= static_cast<int>(expr.size()))
-        return; // no number found
-
-    // Count '-' signs in the last number segment
-    int minusCount = 0;
-    for (int j = numberStart; j < static_cast<int>(expr.size()); ++j) {
-        if (expr[j] == L'-')
-            ++minusCount;
-    }
-
-    // 2. Check if there is already a unary minus *immediately* before the number
-    bool hasUnaryMinus = (i >= 0 && expr[i] == L'-');
-
-    std::wstring lastNumber = expr.substr(numberStart);
-
-    if (lastNumber == L"0" || lastNumber == L"-0")
-    {
-        //don't toggle 0 to -0
-        return;
-    }
-
-    if (hasUnaryMinus)
-    {
-        // Remove the unary minus
-        expr.erase(i, 1); // remove that '-'
-    }
-    else
-    {
-        // Insert a unary minus right before this number
-        expr.insert(numberStart, 1, L'-');
-    }
-
-    SetWindowText(hEdit, expr.c_str());
+    // insert code here...
 }
 
-/**
-* @brief Pre processes the expression from a wstring and resets the text box.
-* @param expression takes in a wide string expression to compute.
-*/
 std::string calculator_functionality::PreProcess(std::wstring expression)
 {
-    HWND hEdit = GetDlgItem(windowHandle, 1000); // Get handle to edit control
 
     // creating a converter object to convert UTF-16 wide strings (wstring) to UTF-8 narrow strings (string)
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
@@ -260,8 +30,7 @@ std::string calculator_functionality::PreProcess(std::wstring expression)
         }
         else if (c == ')') {
             if (depth == 0) {
-                // More closing than opening → syntax error
-                MessageBoxA(windowHandle, "Syntax error", "Error", MB_OK | MB_ICONERROR);
+                //! Add something to send to front end syntax error
                 return "Err";
             }
             --depth;
@@ -269,27 +38,20 @@ std::string calculator_functionality::PreProcess(std::wstring expression)
     }
     if (depth != 0) {
         // Some '(' were never closed
-        MessageBoxA(windowHandle, "Syntax error", "Error", MB_OK | MB_ICONERROR);
+        // Add something to send to front end syntax error
         return "Err";
     }
     return expressionString;
 }
 
-/**
-* @brief Computes the expression from a wstring and resets the text box.
-* @param expression takes in a wide string expression to compute.
-*/
 void calculator_functionality::Compute(std::wstring expression) {
     
     // Testing preprocessing, REMOVE THIS
     std::string processedStr = calculator_functionality::PreProcess(expression);
 
-    // Get handle to edit control
-    HWND hEdit = GetDlgItem(windowHandle, 1000); 
-
     if (processedStr == "Err") {
         
-        SetWindowTextW(hEdit, L"SYNTAX ERROR");
+        // Add something to send to front end syntax error
         return;
     }
     else {
@@ -300,10 +62,10 @@ void calculator_functionality::Compute(std::wstring expression) {
         std::wstring wstringEvaluation = std::to_wstring(exp.Evaluate());
 
         // gets a constant pointer to the wstring null terminated buffer, makes it safe for win32 api calls
-        LPCWSTR lpcwstrEvaluation = wstringEvaluation.c_str();
+        // LPCWSTR lpcwstrEvaluation = wstringEvaluation.c_str();
 
         // setting the edit text
-        SetWindowTextW(hEdit, lpcwstrEvaluation);
+        // SetWindowTextW(hEdit, lpcwstrEvaluation);
 
         // console print, also re-evaulates the expresion tree
         std::cout << exp.Evaluate() << std::endl;
