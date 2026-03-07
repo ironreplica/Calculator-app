@@ -1,5 +1,5 @@
-﻿#include "calculator_functionality.h"
-#include "ExpressionTree.h"
+﻿#include "include/calculator_functionality.h"
+#include "include/ExpressionTree.h"
 
 #include <iostream>
 #include <vector> //  Vector used to create a list
