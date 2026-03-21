@@ -361,3 +361,20 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Visual Studio IDE metadata
+.vs/
+
+# Build output
+x64/
+Debug/
+Release/
+*.user
+
+# Compiled artifacts
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.lib
+*.exp
