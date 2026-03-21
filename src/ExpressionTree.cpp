@@ -8,11 +8,9 @@
 
 ExpressionTree::operator_map ExpressionTree::operators;
 
-// === Constructor ===
 ExpressionTree::ExpressionTree(const std::string& str) {
     std::cout << "CONSTRUCTOR CALLED with: '" << str << "'\n";
 
-    // Initialize static operator table if not already set
     if (operators.empty()) {
         std::cout << "Initializing operators...\n";
 
@@ -21,7 +19,7 @@ ExpressionTree::ExpressionTree(const std::string& str) {
         operators["*"] = OperatorInfo(2, Multiply);
         operators["/"] = OperatorInfo(2, Divide);
         operators["^"] = OperatorInfo(3, Exponents);
-        operators["√"] = OperatorInfo(3, SquareRoot);
+        // operators["√"] = OperatorInfo(3, SquareRoot);
         operators["("] = OperatorInfo(-2, nullptr);
         operators[")"] = OperatorInfo(-2, nullptr);
         operators["#"] = OperatorInfo(-2, nullptr);
@@ -32,13 +30,11 @@ ExpressionTree::ExpressionTree(const std::string& str) {
     std::cout << "FromString finished. root=" << (root ? "NOT NULL" : "NULL") << "\n";
 }
 
-// === Destructor ===
 ExpressionTree::~ExpressionTree() {
     DeleteTree(root);
     root = nullptr;
 }
 
-// === Tree deletion ===
 void ExpressionTree::DeleteTree(Node* node) {
     if (!node) return;
 
@@ -47,7 +43,6 @@ void ExpressionTree::DeleteTree(Node* node) {
     delete node;
 }
 
-// === Evaluation ===
 double ExpressionTree::Evaluate(Node* node) const {
     node = node ? node : root;
 
@@ -64,12 +59,12 @@ double ExpressionTree::Evaluate(Node* node) const {
     return val;
 }
 
-// === Expression representation (to be implemented) ===
+// Expression representation (to be implemented)
 std::string ExpressionTree::Expression() const {
     return {};
 }
 
-// === Helper: Add whitespace around operators ===
+// Add whitespace around operators
 void AddWhitespace(int idx, int insertAt, std::string& str) {
     if (idx >= 0 && insertAt >= 0 &&
         idx < static_cast<int>(str.length()) &&
@@ -80,34 +75,25 @@ void AddWhitespace(int idx, int insertAt, std::string& str) {
     }
 }
 
-// === Helper: Pop operator from stack and form new node ===
+// Helper: Pop operator from stack and form new node
 void PopOperator(std::stack<std::string>& operatorStack,
     std::stack<ExpressionTree::Node*>& operandStack) {
     std::string op = operatorStack.top();
     operatorStack.pop();
 
     ExpressionTree::Node* n = new ExpressionTree::Node(op);
-
-    if (op == "√") { // unary operator
-        n->Left = operandStack.top();
-        operandStack.pop();
-        n->Right = nullptr;
-    }
-    else { // binary operator
-        n->Right = operandStack.top();
-        operandStack.pop();
-        n->Left = operandStack.top();
-        operandStack.pop();
-    }
-
+    n->Right = operandStack.top();
+    operandStack.pop();
+    n->Left = operandStack.top();
+    operandStack.pop();
     operandStack.push(n);
 }
 
-// === Core parsing logic ===
+// core logic
 void ExpressionTree::FromString(const std::string& expressionString) {
     std::string str(expressionString);
 
-    // Insert 0 before unary minus
+    // insert 0 before unary minus
     for (size_t i = 0; i < str.size(); ++i) {
         if (str[i] == '-') {
             bool isUnary =
@@ -160,12 +146,11 @@ void ExpressionTree::FromString(const std::string& expressionString) {
             else if (s == ")") {
                 while (operatorStack.top() != "(")
                     PopOperator(operatorStack, operandStack);
-                operatorStack.pop(); // discard "("
+                operatorStack.pop(); 
             }
             else {
-                // Define right-associative operators
                 auto isRightAssociative = [](const std::string& op) {
-                    return op == "^" || op == "√";
+                    return op == "^" ;
                     };
 
                 while (operatorStack.top() != "#" &&
@@ -182,13 +167,11 @@ void ExpressionTree::FromString(const std::string& expressionString) {
             }
         }
         else {
-            // Operand
             Node* n = new Node(s);
             operandStack.push(n);
         }
     }
 
-    // Pop remaining operators
     while (operatorStack.top() != "#")
         PopOperator(operatorStack, operandStack);
 
