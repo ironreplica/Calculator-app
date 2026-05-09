@@ -44,15 +44,20 @@ std::string calculator_functionality::PreProcess(std::wstring expression)
     return expressionString;
 }
 
-void calculator_functionality::Compute(std::wstring expression) {
-    
+
+
+// converting to a string so we can get use this in the response
+std::string calculator_functionality::Compute(std::wstring expression) {
+    // the frontend should handle UI related stuff, assume theres a perfectly formatted expression here
+
+
     // Testing preprocessing, REMOVE THIS
     std::string processedStr = calculator_functionality::PreProcess(expression);
 
     if (processedStr == "Err") {
         
         // Add something to send to front end syntax error
-        return;
+        return "Err";
     }
     else {
         // creating the expression tree object
@@ -69,7 +74,27 @@ void calculator_functionality::Compute(std::wstring expression) {
 
         // console print, also re-evaulates the expresion tree
         std::cout << exp.Evaluate() << std::endl;
+        return ConvertString(wstringEvaluation);
     }
+}
+
+std::string calculator_functionality::ConvertString(std::wstring wstrToConvert) {
+    
+    // calculating the length of the multibyte string
+    size_t len = wcstombs(nullptr, wstrToConvert.c_str(), 0) + 1;
+
+    // create a buffer to hold the multibyte string
+    char* buffer = new char[len];
+
+    wcstombs(buffer, wstrToConvert.c_str(), len);
+
+    // converting the wstring to string
+    std::string str(buffer);
+
+    // cleaning up the buffer
+    delete[] buffer;
+
+    return str;
 }
 
 

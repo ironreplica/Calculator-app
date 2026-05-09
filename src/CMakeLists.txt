@@ -3,9 +3,16 @@ project(my-oatpp-app)
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(oatpp 1.3.0 REQUIRED)
+# No version number = accepts whatever is installed (1.3.0 in Docker, 1.4.0 on Windows)
+find_package(oatpp REQUIRED)
 
-add_executable(my-oatpp-app src/main.cpp)
+include_directories(include)
+
+add_executable(my-oatpp-app
+    calculator_functionality.cpp
+    ExpressionTree.cpp
+    OatApp.cpp
+)
 
 target_link_libraries(my-oatpp-app
     PRIVATE oatpp::oatpp
