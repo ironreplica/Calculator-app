@@ -4,14 +4,14 @@ A simple calculator built in **C++** that can currently do basic operations such
 
 ---
 
-## 🚀 Features
+## Features
 
 - Performs addition, subtraction, multiplication, and division  
 - Handles division by zero "safely"  
 
 ---
 
-## 📂 File Explanations
+## File Explanations
 
 **Calculator_app.cpp**  
 > The current basic ui frontend of the calculator. Also defines what buttons we have.
