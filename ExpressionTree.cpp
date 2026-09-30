@@ -64,7 +64,6 @@ std::string ExpressionTree::Expression() const {
     return {};
 }
 
-// === Helper: Add whitespace around operators ===
 void AddWhitespace(int idx, int insertAt, std::string& str) {
     if (idx >= 0 && insertAt >= 0 &&
         idx < static_cast<int>(str.length()) &&
@@ -75,7 +74,6 @@ void AddWhitespace(int idx, int insertAt, std::string& str) {
     }
 }
 
-// === Helper: Pop operator from stack and form new node ===
 void PopOperator(std::stack<std::string>& operatorStack,
     std::stack<ExpressionTree::Node*>& operandStack) {
     std::string op = operatorStack.top();
@@ -117,8 +115,7 @@ void ExpressionTree::FromString(const std::string& expressionString) {
         }
     }
 
-    // "√" is 3 bytes in UTF-8, so the single-char loop below can't see it.
-    // Pad it with spaces here, and treat "2√9" / ")√9" as implicit multiplication.
+    // Pad with spaces here for sqrt treat "2√9" / ")√9" as multiplication
     const std::string sqrtSymbol = "√";
     for (size_t i = str.find(sqrtSymbol); i != std::string::npos; i = str.find(sqrtSymbol, i)) {
         size_t prev = str.find_last_not_of(' ', i == 0 ? std::string::npos : i - 1);
@@ -130,7 +127,7 @@ void ExpressionTree::FromString(const std::string& expressionString) {
         i += replacement.size();
     }
 
-    // Add spaces around operators for tokenization
+    // Add spaces around operators
     for (size_t i = 0; i < str.length(); ++i) {
         std::string op(1, str[i]);
         if (operators.find(op) != operators.end()) {
