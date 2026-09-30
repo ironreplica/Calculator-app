@@ -281,7 +281,7 @@ std::string calculator_functionality::PreProcess(std::wstring expression)
 */
 void calculator_functionality::Compute(std::wstring expression) {
     
-    // Testing preprocessing, REMOVE THIS
+    // Testing preprocessing
     std::string processedStr = calculator_functionality::PreProcess(expression);
 
     // Get handle to edit control

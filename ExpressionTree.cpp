@@ -8,11 +8,9 @@
 
 ExpressionTree::operator_map ExpressionTree::operators;
 
-// === Constructor ===
 ExpressionTree::ExpressionTree(const std::string& str) {
     std::cout << "CONSTRUCTOR CALLED with: '" << str << "'\n";
 
-    // Initialize static operator table if not already set
     if (operators.empty()) {
         std::cout << "Initializing operators...\n";
 
@@ -32,13 +30,11 @@ ExpressionTree::ExpressionTree(const std::string& str) {
     std::cout << "FromString finished. root=" << (root ? "NOT NULL" : "NULL") << "\n";
 }
 
-// === Destructor ===
 ExpressionTree::~ExpressionTree() {
     DeleteTree(root);
     root = nullptr;
 }
 
-// === Tree deletion ===
 void ExpressionTree::DeleteTree(Node* node) {
     if (!node) return;
 
@@ -47,7 +43,6 @@ void ExpressionTree::DeleteTree(Node* node) {
     delete node;
 }
 
-// === Evaluation ===
 double ExpressionTree::Evaluate(Node* node) const {
     node = node ? node : root;
 
@@ -64,7 +59,7 @@ double ExpressionTree::Evaluate(Node* node) const {
     return val;
 }
 
-// === Expression representation (to be implemented) ===
+// Expression representation (to be implemented)
 std::string ExpressionTree::Expression() const {
     return {};
 }
@@ -120,6 +115,19 @@ void ExpressionTree::FromString(const std::string& expressionString) {
                 i += 1;
             }
         }
+    }
+
+    // "√" is 3 bytes in UTF-8, so the single-char loop below can't see it.
+    // Pad it with spaces here, and treat "2√9" / ")√9" as implicit multiplication.
+    const std::string sqrtSymbol = "√";
+    for (size_t i = str.find(sqrtSymbol); i != std::string::npos; i = str.find(sqrtSymbol, i)) {
+        size_t prev = str.find_last_not_of(' ', i == 0 ? std::string::npos : i - 1);
+        bool implicitMultiply = i > 0 && prev != std::string::npos &&
+            (isdigit(static_cast<unsigned char>(str[prev])) || str[prev] == '.' || str[prev] == ')');
+
+        std::string replacement = implicitMultiply ? " * √ " : " √ ";
+        str.replace(i, sqrtSymbol.size(), replacement);
+        i += replacement.size();
     }
 
     // Add spaces around operators for tokenization
