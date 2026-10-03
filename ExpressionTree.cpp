@@ -87,6 +87,11 @@ void PopOperator(std::stack<std::string>& operatorStack,
         operandStack.pop();
         n->Right = nullptr;
     }
+    else if (op == "%" && operandStack.size() < 2) { // "x%" with no y: x% of 1
+        n->Left = operandStack.top();
+        operandStack.pop();
+        n->Right = new ExpressionTree::Node("1");
+    }
     else { // binary operator
         n->Right = operandStack.top();
         operandStack.pop();
