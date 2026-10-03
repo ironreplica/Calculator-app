@@ -18,6 +18,7 @@ ExpressionTree::ExpressionTree(const std::string& str) {
         operators["-"] = OperatorInfo(1, Subtract);
         operators["*"] = OperatorInfo(2, Multiply);
         operators["/"] = OperatorInfo(2, Divide);
+        operators["%"] = OperatorInfo(2, Percentage);
         operators["^"] = OperatorInfo(3, Exponents);
         operators["√"] = OperatorInfo(3, SquareRoot);
         operators["("] = OperatorInfo(-2, nullptr);
