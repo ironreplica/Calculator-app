@@ -293,20 +293,28 @@ void calculator_functionality::Compute(std::wstring expression) {
         return;
     }
     else {
-        // creating the expression tree object
-        ExpressionTree exp(processedStr);
+        try {
+            // creating the expression tree object
+            ExpressionTree exp(processedStr);
 
-        // convert from a double to a wstring
-        std::wstring wstringEvaluation = std::to_wstring(exp.Evaluate());
+            // convert from a double to a wstring
+            std::wstring wstringEvaluation = std::to_wstring(exp.Evaluate());
 
-        // gets a constant pointer to the wstring null terminated buffer, makes it safe for win32 api calls
-        LPCWSTR lpcwstrEvaluation = wstringEvaluation.c_str();
+            // gets a constant pointer to the wstring null terminated buffer, makes it safe for win32 api calls
+            LPCWSTR lpcwstrEvaluation = wstringEvaluation.c_str();
 
-        // setting the edit text
-        SetWindowTextW(hEdit, lpcwstrEvaluation);
+            // setting the edit text
+            SetWindowTextW(hEdit, lpcwstrEvaluation);
 
-        // console print, also re-evaulates the expresion tree
-        std::cout << exp.Evaluate() << std::endl;
+            // console print, also re-evaulates the expresion tree
+            std::cout << exp.Evaluate() << std::endl;
+        }
+        catch (const MathError&) {
+            SetWindowTextW(hEdit, L"MATH ERROR");
+        }
+        catch (const ExpressionError&) {
+            SetWindowTextW(hEdit, L"SYNTAX ERROR");
+        }
     }
 }
 

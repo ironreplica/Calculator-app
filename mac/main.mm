@@ -143,11 +143,15 @@ static NSString* const buttons[BUTTON_COUNT] = {
 }
 
 - (void)showSyntaxError {
+    [self showError:@"Syntax error"];
+}
+
+- (void)showError:(NSString*)message {
     NSAlert* alert = [[NSAlert alloc] init];
-    alert.messageText = @"Syntax error";
+    alert.messageText = message;
     alert.alertStyle = NSAlertStyleCritical;
     [alert runModal];
-    self.inputBox.stringValue = @"SYNTAX ERROR";
+    self.inputBox.stringValue = message.uppercaseString;
 }
 
 /**
@@ -178,8 +182,16 @@ static NSString* const buttons[BUTTON_COUNT] = {
         return;
     }
 
-    ExpressionTree exp(expressionString);
-    self.inputBox.stringValue = [NSString stringWithFormat:@"%f", exp.Evaluate()];
+    try {
+        ExpressionTree exp(expressionString);
+        self.inputBox.stringValue = [NSString stringWithFormat:@"%f", exp.Evaluate()];
+    }
+    catch (const MathError& e) {
+        [self showError:@(e.what())];
+    }
+    catch (const ExpressionError&) {
+        [self showSyntaxError];
+    }
 }
 
 @end
