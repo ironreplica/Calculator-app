@@ -1,7 +1,8 @@
-﻿#include "include/ExpressionTree.h"
+﻿#include "ExpressionTree.h"
 #include <stack>
 #include <string>
 #include <map>
+#include <vector>
 #include <sstream>
 #include <iostream>
 #include <cctype>
@@ -14,15 +15,17 @@ ExpressionTree::ExpressionTree(const std::string& str) {
     if (operators.empty()) {
         std::cout << "Initializing operators...\n";
 
-        operators["+"] = OperatorInfo(1, Add);
-        operators["-"] = OperatorInfo(1, Subtract);
-        operators["*"] = OperatorInfo(2, Multiply);
-        operators["/"] = OperatorInfo(2, Divide);
-        operators["^"] = OperatorInfo(3, Exponents);
-        // operators["√"] = OperatorInfo(3, SquareRoot);
-        operators["("] = OperatorInfo(-2, nullptr);
-        operators[")"] = OperatorInfo(-2, nullptr);
-        operators["#"] = OperatorInfo(-2, nullptr);
+        operators["+"] = OperatorInfo(1, Add, Binary);
+        operators["-"] = OperatorInfo(1, Subtract, Binary);
+        operators["*"] = OperatorInfo(2, Multiply, Binary);
+        operators["/"] = OperatorInfo(2, Divide, Binary);
+        operators["%"] = OperatorInfo(2, Percentage, Postfix);
+        operators["^"] = OperatorInfo(3, Exponents, Binary);
+        operators["√"] = OperatorInfo(3, SquareRoot, Prefix);
+        operators["neg"] = OperatorInfo(3, UnaryMinus, Prefix);
+        operators["("] = OperatorInfo(-2, nullptr, Bracket);
+        operators[")"] = OperatorInfo(-2, nullptr, Bracket);
+        operators["#"] = OperatorInfo(-2, nullptr, Bracket);
     }
 
     std::cout << "About to call FromString\n";
@@ -50,12 +53,21 @@ double ExpressionTree::Evaluate(Node* node) const {
     if (it != operators.end()) {
         double left = node->Left ? Evaluate(node->Left) : 0.0;
         double right = node->Right ? Evaluate(node->Right) : 0.0;
-        return (it->second.Func)(left, right);
+
+        if (node->Value == "/" && right == 0)
+            throw MathError("Division by zero");
+
+        double result = (it->second.Func)(left, right);
+        if (!std::isfinite(result))
+            throw MathError("Math error");
+        return result + 0.0; // turns -0 into 0
     }
 
     std::istringstream ss(node->Value);
-    double val;
+    double val = 0.0;
     ss >> val;
+    if (!std::isfinite(val))
+        throw MathError("Math error");
     return val;
 }
 
@@ -64,65 +76,125 @@ std::string ExpressionTree::Expression() const {
     return {};
 }
 
-// Add whitespace around operators
-void AddWhitespace(int idx, int insertAt, std::string& str) {
-    if (idx >= 0 && insertAt >= 0 &&
-        idx < static_cast<int>(str.length()) &&
-        insertAt < static_cast<int>(str.length()) &&
-        str[idx] != ' ')
-    {
-        str.insert(insertAt, 1, ' ');
+// Splits the expression into tokens and checks the syntax, so the tree builder
+// never gets an operator that is missing an operand.
+// Unary minus comes out as "neg", and "2(3)", "2√9", "(1)(2)", "50%2" get a "*" inserted.
+std::vector<std::string> ExpressionTree::Tokenize(const std::string& str) {
+    if (str.length() > MaxLength)
+        throw ExpressionError("Expression too long");
+
+    const std::string sqrtSymbol = "√";
+    std::vector<std::string> tokens;
+    bool prevIsValue = false;  // previous token ends a value: a number, ")" or "%"
+    bool prevIsNumber = false;
+    int depth = 0;             // open parentheses
+
+    for (size_t i = 0; i < str.length();) {
+        unsigned char c = str[i];
+
+        if (isspace(c)) {
+            ++i;
+            continue;
+        }
+
+        // Number: digits with at most one decimal point
+        if (isdigit(c) || c == '.') {
+            size_t start = i;
+            int digits = 0, dots = 0;
+            while (i < str.length() && (isdigit(static_cast<unsigned char>(str[i])) || str[i] == '.')) {
+                str[i] == '.' ? ++dots : ++digits;
+                ++i;
+            }
+            if (digits == 0 || dots > 1)
+                throw ExpressionError("Invalid number");
+            if (prevIsNumber)
+                throw ExpressionError("Missing operator");
+            if (prevIsValue)
+                tokens.push_back("*");
+
+            tokens.push_back(str.substr(start, i - start));
+            prevIsValue = prevIsNumber = true;
+            continue;
+        }
+
+        std::string op = str.compare(i, sqrtSymbol.size(), sqrtSymbol) == 0 ? sqrtSymbol : std::string(1, c);
+        i += op.size();
+
+        if (op == "(") {
+            if (prevIsValue)
+                tokens.push_back("*");
+            ++depth;
+            prevIsValue = false;
+        }
+        else if (op == ")") {
+            if (!prevIsValue || depth == 0)
+                throw ExpressionError("Syntax error");
+            --depth;
+        }
+        else {
+            // minus is a sign unless it follows a value
+            if (op == "-" && !prevIsValue)
+                op = "neg";
+
+            auto it = operators.find(op);
+            if (it == operators.end() || it->second.Type == Bracket)
+                throw ExpressionError("Unexpected character");
+
+            switch (it->second.Type) {
+            case Prefix:
+                if (prevIsValue)
+                    tokens.push_back("*");
+                prevIsValue = false;
+                break;
+            case Binary:
+                if (!prevIsValue)
+                    throw ExpressionError("Syntax error");
+                prevIsValue = false;
+                break;
+            default: // Postfix
+                if (!prevIsValue)
+                    throw ExpressionError("Syntax error");
+                break;
+            }
+        }
+
+        tokens.push_back(op);
+        prevIsNumber = false;
     }
+
+    // empty, ends on an operator, or has an unclosed "("
+    if (!prevIsValue || depth != 0)
+        throw ExpressionError("Syntax error");
+
+    return tokens;
 }
 
-// Helper: Pop operator from stack and form new node
-void PopOperator(std::stack<std::string>& operatorStack,
-    std::stack<ExpressionTree::Node*>& operandStack) {
+void ExpressionTree::PopOperator(std::stack<std::string>& operatorStack,
+    std::stack<Node*>& operandStack) {
     std::string op = operatorStack.top();
     operatorStack.pop();
 
-    ExpressionTree::Node* n = new ExpressionTree::Node(op);
-    n->Right = operandStack.top();
-    operandStack.pop();
-    n->Left = operandStack.top();
-    operandStack.pop();
+    Node* n = new Node(op);
+
+    if (operators[op].Type != Binary) { // unary operator
+        n->Left = operandStack.top();
+        operandStack.pop();
+        n->Right = nullptr;
+    }
+    else { // binary operator
+        n->Right = operandStack.top();
+        operandStack.pop();
+        n->Left = operandStack.top();
+        operandStack.pop();
+    }
+
     operandStack.push(n);
 }
 
-// core logic
+// === Core parsing logic ===
 void ExpressionTree::FromString(const std::string& expressionString) {
-    std::string str(expressionString);
-
-    // insert 0 before unary minus
-    for (size_t i = 0; i < str.size(); ++i) {
-        if (str[i] == '-') {
-            bool isUnary =
-                (i == 0) ||
-                (str[i - 1] == '(') ||
-                (operators.find(std::string(1, str[i - 1])) != operators.end() && str[i - 1] != ')');
-
-            if (isUnary) {
-                str.insert(i, "0");
-                i += 1;
-            }
-        }
-    }
-
-    // Add spaces around operators for tokenization
-    for (size_t i = 0; i < str.length(); ++i) {
-        std::string op(1, str[i]);
-        if (operators.find(op) != operators.end()) {
-            // Skip minus if part of a number
-            if (str[i] == '-') {
-                bool isPartOfNumber =
-                    (i + 1 < str.length() && isdigit(str[i + 1])) &&
-                    (i == 0 || str[i - 1] == '(' || str[i - 1] == ' ');
-                if (isPartOfNumber) continue;
-            }
-            AddWhitespace(i + 1, i + 1, str);
-            AddWhitespace(i - 1, i, str);
-        }
-    }
+    // Throws on bad syntax, before any nodes are allocated
+    std::vector<std::string> tokens = Tokenize(expressionString);
 
     std::stack<std::string> operatorStack;
     std::stack<Node*> operandStack;
@@ -134,31 +206,32 @@ void ExpressionTree::FromString(const std::string& expressionString) {
     // manages operators and parentheses with stacks based on precedence/associativity,
     // and produces an order that is easy for the computer to evaluate (postfix/tree).
 
-    std::istringstream ss(str);
-    while (!ss.eof()) {
-        std::string s;
-        ss >> s;
-
-        if (operators.find(s) != operators.end()) {
+    for (const std::string& s : tokens) {
+        auto it = operators.find(s);
+        if (it != operators.end()) {
             if (s == "(") {
                 operatorStack.push(s);
             }
             else if (s == ")") {
                 while (operatorStack.top() != "(")
                     PopOperator(operatorStack, operandStack);
-                operatorStack.pop(); 
+                operatorStack.pop(); // discard "("
+            }
+            else if (it->second.Type == Postfix) {
+                // postfix: applies straight away to the value before it
+                operatorStack.push(s);
+                PopOperator(operatorStack, operandStack);
+            }
+            else if (it->second.Type == Prefix) {
+                // prefix: nothing on the stack can be finished yet
+                operatorStack.push(s);
             }
             else {
-                auto isRightAssociative = [](const std::string& op) {
-                    return op == "^" ;
-                    };
-
+                // "^" is right-associative, the other binary operators are left-associative
                 while (operatorStack.top() != "#" &&
-                    operators.find(operatorStack.top()) != operators.end() &&
-                    ((!isRightAssociative(s) &&
-                        operators[operatorStack.top()].Precedence >= operators[s].Precedence) ||
-                        (isRightAssociative(s) &&
-                            operators[operatorStack.top()].Precedence > operators[s].Precedence)))
+                    (operators[operatorStack.top()].Precedence > operators[s].Precedence ||
+                        (s != "^" &&
+                            operators[operatorStack.top()].Precedence == operators[s].Precedence)))
                 {
                     PopOperator(operatorStack, operandStack);
                 }
@@ -167,11 +240,13 @@ void ExpressionTree::FromString(const std::string& expressionString) {
             }
         }
         else {
+            // Operand
             Node* n = new Node(s);
             operandStack.push(n);
         }
     }
 
+    // Pop remaining operators
     while (operatorStack.top() != "#")
         PopOperator(operatorStack, operandStack);
 
